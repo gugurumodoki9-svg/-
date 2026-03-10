@@ -71,13 +71,16 @@
             }
         });
 
-        // ニュース監視
+        // ニュース監視（全プレイヤーにリアルタイム反映）
         onSnapshot(doc(db, "system", "news"), (snapshot) => {
             const data = snapshot.data();
             if (data && data.messages && data.messages.length > 0) {
                 window.newsMessages = data.messages;
-                startNewsTicker();
+            } else {
+                window.newsMessages = [];
             }
+            // startNewsTickerはwindow経由で遅延呼び出し（モジュール境界対策）
+            setTimeout(() => { if(typeof window.startNewsTicker === 'function') window.startNewsTicker(); }, 100);
         });
 
         // 配当変更監視（ラックマルチも含む）
@@ -124,8 +127,7 @@
 
         window.clearNews = async () => {
             await setDoc(doc(db, "system", "news"), { messages: [] });
-            window.newsMessages = [];
-            document.getElementById('news-ticker-text').innerText = "SYSTEM ONLINE --- 本日も電脳チンチロをお楽しみください ---";
+            // onSnapshotが拾って全プレイヤーのtickerも自動リセットされる
             alert("ニュースをクリアしたぜ");
         };
 
@@ -500,16 +502,24 @@
     window.LUCK_MULTI = 1;
     window.newsMessages = [];
 
-    // ニュースティッカー制御
+    // ニュースティッカー制御（全プレイヤーにリアルタイム反映）
     window.startNewsTicker = () => {
         const msgs = window.newsMessages;
-        if (!msgs || msgs.length === 0) return;
         const el = document.getElementById('news-ticker-text');
+        if (!el) return;
+        if (!msgs || msgs.length === 0) {
+            // メッセージなし → デフォルトに戻す
+            el.style.animation = 'none';
+            el.offsetHeight;
+            el.innerText = 'SYSTEM ONLINE --- 本日も電脳チンチロをお楽しみください ---';
+            el.style.animation = 'ticker-scroll 30s linear infinite';
+            return;
+        }
         const combined = msgs.map(m => `◆ ${m.text}`).join('　　　　　');
         el.innerText = combined + '　　　　　';
-        // アニメーションリセット
+        // アニメーションリセット（新メッセージを最初から流す）
         el.style.animation = 'none';
-        el.offsetHeight; // reflow
+        el.offsetHeight; // reflow強制
         const duration = Math.max(20, combined.length * 0.28);
         el.style.animation = `ticker-scroll ${duration}s linear infinite`;
     };
