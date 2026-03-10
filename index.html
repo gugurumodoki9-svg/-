@@ -663,80 +663,53 @@
         requestAnimationFrame(check);
     }
 
-    // ラックマルチ: 確率操作関数
-    // LM=1→通常, LM>1→いい目出やすく悪い目減少, LM<1→逆
-    // 仕組み: 各結果カテゴリの「重み」をLMで増減してウェイテッドランダムで最終結果を決定
+    // ラックマルチ: 再抗式（悪い目が出たらLMに応じた確率でリロール）
+    // LM=1 → 通常, LM>1 → 悪い目をリロールしやすい, LM<1 → 逆に悪い目が残りやすい
+    function isBadResult(r) {
+        // ヒフミ or 目なし を「悪い目」とみなす
+        const isHifumi  = r[0]===1 && r[1]===2 && r[2]===3;
+        const isNone    = !(r[0]===r[1] && r[1]===r[2]) &&
+                          !(r[0]===4 && r[1]===5 && r[2]===6) &&
+                          !(r[0]===r[1] || r[1]===r[2]) &&
+                          !isHifumi;
+        return isHifumi || isNone;
+    }
+
+    function randomDiceResult() {
+        return [1,2,3,4,5,6].map(() => Math.floor(Math.random()*6)+1).sort((a,b)=>a-b);
+    }
+
     function applyLuckToResult(physicsRes, lm) {
         if(lm === 1) return physicsRes; // LM=1はそのまま
 
-        // 物理結果のカテゴリを判定
-        function classify(r) {
-            if(r[0]===1 && r[1]===1 && r[2]===1) return 'pinzoro';
-            if(r[0]===r[1] && r[1]===r[2]) return 'zoro';
-            if(r[0]===4 && r[1]===5 && r[2]===6) return 'shigoro';
-            if(r[0]===1 && r[1]===2 && r[2]===3) return 'hifumi';
-            if(r[0]===r[1] || r[1]===r[2]) return 'pair';
-            return 'none';
-        }
-
-        // 各カテゴリの基本重み（実際の確率に近い値）
-        // none:約50%, pair:約33%, shigoro:約2.8%, zoro:約11.6%, pinzoro:約0.5%, hifumi:約2.8%
-        const baseWeights = {
-            pinzoro: 0.5,
-            zoro:    11.6,
-            shigoro: 2.8,
-            pair:    33.0,
-            hifumi:  2.8,
-            none:    49.3
-        };
-
-        // LMによる重み調整: いい目はLM倍、悪い目は1/LM倍
-        const goodCats  = ['pinzoro', 'zoro', 'shigoro', 'pair'];
-        const badCats   = ['hifumi', 'none'];
-        const weights   = {};
-        for(const cat of goodCats) weights[cat] = baseWeights[cat] * lm;
-        for(const cat of badCats)  weights[cat] = baseWeights[cat] / lm;
-
-        // ウェイテッドランダム抽選
-        const total = Object.values(weights).reduce((a,b) => a+b, 0);
-        let rand = Math.random() * total;
-        let chosen = 'none';
-        for(const [cat, w] of Object.entries(weights)) {
-            rand -= w;
-            if(rand <= 0) { chosen = cat; break; }
-        }
-
-        // 物理結果のカテゴリと一致してたらそのまま返す
-        if(classify(physicsRes) === chosen) return physicsRes;
-
-        // カテゴリに合った結果を生成
-        switch(chosen) {
-            case 'pinzoro': return [1,1,1];
-            case 'zoro': {
-                const n = [2,3,4,5,6][Math.floor(Math.random()*5)];
-                return [n,n,n];
+        let res = physicsRes;
+        // 悪い目が出た場合: reroll確率 = 1 - 1/LM（LM=2→50%, LM=4→75%, LM=10→90%）
+        // LM<1の場合: いい目が出た場合にreroll（LM=0.5→50%, LM=0.25→75%）
+        if(lm > 1 && isBadResult(res)) {
+            const rerollChance = 1 - (1 / lm);
+            const MAX_REROLLS = 3; // 最大3回までリロール
+            for(let i = 0; i < MAX_REROLLS; i++) {
+                if(Math.random() < rerollChance) {
+                    res = randomDiceResult();
+                    if(!isBadResult(res)) break; // いい目が出たら終了
+                } else {
+                    break; // リロールしない
+                }
             }
-            case 'shigoro': return [4,5,6];
-            case 'pair': {
-                const faces = [1,2,3,4,5,6];
-                const p = faces[Math.floor(Math.random()*6)];
-                let other;
-                do { other = faces[Math.floor(Math.random()*6)]; } while(other === p);
-                return [p,p,other].sort((a,b)=>a-b);
-            }
-            case 'hifumi': return [1,2,3];
-            case 'none': {
-                // ゾロでもシゴロでもヒフミでもペアでもない目を生成
-                let attempt;
-                let tries = 0;
-                do {
-                    attempt = [1,2,3,4,5,6].map(() => Math.floor(Math.random()*6)+1).sort((a,b)=>a-b);
-                    tries++;
-                } while(tries < 20 && classify(attempt) !== 'none');
-                return attempt;
+        } else if(lm < 1 && !isBadResult(res)) {
+            // LM<1: いい目が出た時にリロールして悪い目を引かせる
+            const rerollChance = 1 - lm;
+            const MAX_REROLLS = 3;
+            for(let i = 0; i < MAX_REROLLS; i++) {
+                if(Math.random() < rerollChance) {
+                    res = randomDiceResult();
+                    if(isBadResult(res)) break;
+                } else {
+                    break;
+                }
             }
         }
-        return physicsRes;
+        return res;
     }
 
     function judge() {
