@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>電脳チンチロ - TITANS ULTIMATE</title>
+    <title>チンチロ - TITANS ULTIMATE</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
     <script type="module">
@@ -62,7 +62,7 @@
                 const giftId = localStorage.getItem('last_gift_id');
                 if (String(data.timestamp) !== giftId) {
                     const gb = document.getElementById('gift-box');
-                    document.getElementById('gift-msg').innerText = `管理者からの贈り物: $${data.amount.toLocaleString()}`;
+                    document.getElementById('gift-msg').innerText = `ギフト: $${data.amount.toLocaleString()}`;
                     window.pendingGift = data.amount;
                     window.currentGiftTs = String(data.timestamp);
                     gb.style.display = 'block';
@@ -664,26 +664,42 @@
     }
 
     // ラックマルチ: 勝利時に確率で配当ボーナス
-    // LM>1 → 勝った時にLMを配当に乗算する確率アップ
-    // LM<1 → 逆に配当が下がる確率アップ
+    // LM=2→10%, LM=3→20% ... LM=10→80%, LM=11→確定+10%追加, LM=12→確定+20%追加...
+    // LM<1 → 逆に配当が下がる確率アップ (LM=0.9→10%, LM=0.5→50%)
     function applyLuckBonus(baseMult) {
         const LM = window.LUCK_MULTI || 1;
         if(LM === 1) return baseMult;
-        // LM>1: (1 - 1/LM) の確率でLM倍ボーナス発動
-        // LM=2→50%, LM=4→75%, LM=10→90%
+
+        const log = document.getElementById('accident-log');
+
         if(LM > 1) {
-            const chance = 1 - (1 / LM);
-            if(Math.random() < chance) {
-                document.getElementById('accident-log').innerText = `⭐ LUCK BONUS x${LM}!`;
-                setTimeout(() => { document.getElementById('accident-log').innerText = ''; }, 2000);
-                return baseMult * LM;
+            if(LM <= 10) {
+                // LM=2→10%, LM=3→20%, ..., LM=10→80%
+                const chance = (LM - 1) * 0.1;
+                if(Math.random() < chance) {
+                    log.innerText = `⭐ LUCK BONUS x${LM}!`;
+                    setTimeout(() => { log.innerText = ''; }, 2000);
+                    return baseMult * LM;
+                }
+            } else {
+                // LM=11以上: 1回目は確定ボーナス、さらに(LM-10)*10%の確率で2回目ボーナス
+                let result = baseMult * LM;
+                log.innerText = `⭐ LUCK BONUS x${LM}!`;
+                const extraChance = (LM - 10) * 0.1;
+                if(Math.random() < extraChance) {
+                    result = result * LM;
+                    log.innerText = `🌟 DOUBLE LUCK!! x${LM}x${LM}!`;
+                }
+                setTimeout(() => { log.innerText = ''; }, 2500);
+                return result;
             }
         } else if(LM < 1) {
-            // LM<1: (1 - LM) の確率で配当がLM倍に減少
+            // LM<1: (1-LM)*100% の確率で配当がLM倍に減少
+            // 例: LM=0.9→10%, LM=0.5→50%, LM=0.1→90%
             const chance = 1 - LM;
             if(Math.random() < chance) {
-                document.getElementById('accident-log').innerText = `💀 BAD LUCK x${LM}`;
-                setTimeout(() => { document.getElementById('accident-log').innerText = ''; }, 2000);
+                log.innerText = `💀 BAD LUCK x${LM}`;
+                setTimeout(() => { log.innerText = ''; }, 2000);
                 return baseMult * LM;
             }
         }
