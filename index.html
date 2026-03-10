@@ -683,32 +683,39 @@
         if(lm === 1) return physicsRes; // LM=1はそのまま
 
         let res = physicsRes;
-        // 悪い目が出た場合: reroll確率 = 1 - 1/LM（LM=2→50%, LM=4→75%, LM=10→90%）
-        // LM<1の場合: いい目が出た場合にreroll（LM=0.5→50%, LM=0.25→75%）
+        let rerolled = false;
+
         if(lm > 1 && isBadResult(res)) {
             const rerollChance = 1 - (1 / lm);
-            const MAX_REROLLS = 3; // 最大3回までリロール
+            const MAX_REROLLS = 3;
             for(let i = 0; i < MAX_REROLLS; i++) {
                 if(Math.random() < rerollChance) {
                     res = randomDiceResult();
-                    if(!isBadResult(res)) break; // いい目が出たら終了
+                    rerolled = true;
+                    if(!isBadResult(res)) break;
                 } else {
-                    break; // リロールしない
+                    break;
                 }
             }
         } else if(lm < 1 && !isBadResult(res)) {
-            // LM<1: いい目が出た時にリロールして悪い目を引かせる
             const rerollChance = 1 - lm;
             const MAX_REROLLS = 3;
             for(let i = 0; i < MAX_REROLLS; i++) {
                 if(Math.random() < rerollChance) {
                     res = randomDiceResult();
+                    rerolled = true;
                     if(isBadResult(res)) break;
                 } else {
                     break;
                 }
             }
         }
+
+        // リロールが発生した場合、ダイスの見た目を結果に合わせて強制更新
+        if(rerolled) {
+            res.forEach((val, i) => forceDiceFaceUp(i, val));
+        }
+
         return res;
     }
 
@@ -812,6 +819,33 @@
             if(dot > max) { max = dot; result = f.val; }
         });
         return result;
+    }
+
+    // リロール後にダイスの見た目を結果に合わせて強制更新
+    // val を上面にするクォータニオンを設定する
+    function forceDiceFaceUp(bodyIndex, val) {
+        // faceValues = [3,4,1,6,5,2] → +X/-X/+Y/-Y/+Z/-Z
+        // val→上面にするには、その面の法線を(0,1,0)に向ければいい
+        const faceToDir = {
+            1: new THREE.Vector3(0, 1, 0),   // +Y が上 → そのまま
+            6: new THREE.Vector3(0, -1, 0),  // -Y が上 → 180度回転
+            3: new THREE.Vector3(1, 0, 0),   // +X が上
+            4: new THREE.Vector3(-1, 0, 0),  // -X が上
+            5: new THREE.Vector3(0, 0, 1),   // +Z が上
+            2: new THREE.Vector3(0, 0, -1),  // -Z が上
+        };
+        const dir = faceToDir[val];
+        if (!dir) return;
+        const q = new THREE.Quaternion().setFromUnitVectors(dir, new THREE.Vector3(0, 1, 0));
+        // 見た目上の揺らぎを少し加えてランダム感を出す
+        const jitter = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), Math.random() * Math.PI * 2);
+        q.multiply(jitter);
+        const body = diceBodies[bodyIndex];
+        const mesh = diceMeshes[bodyIndex];
+        body.quaternion.set(q.x, q.y, q.z, q.w);
+        body.velocity.set(0,0,0);
+        body.angularVelocity.set(0,0,0);
+        mesh.quaternion.copy(q);
     }
 
     window.addBurst = () => { if(!rolling || isFoul) return; burstPower += (equippedTool === 't-grip') ? 3 : 8; if(burstPower > 100) { isFoul = true; document.getElementById('msg').innerText = "FOUL!!"; diceBodies.forEach(b => b.velocity.y = 40); } else { diceBodies.forEach(b => { if(b.position.y < 2) b.velocity.y += 12; }); } };
