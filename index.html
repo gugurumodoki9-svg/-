@@ -663,60 +663,31 @@
         requestAnimationFrame(check);
     }
 
-    // ラックマルチ: 再抗式（悪い目が出たらLMに応じた確率でリロール）
-    // LM=1 → 通常, LM>1 → 悪い目をリロールしやすい, LM<1 → 逆に悪い目が残りやすい
-    function isBadResult(r) {
-        // ヒフミ or 目なし を「悪い目」とみなす
-        const isHifumi  = r[0]===1 && r[1]===2 && r[2]===3;
-        const isNone    = !(r[0]===r[1] && r[1]===r[2]) &&
-                          !(r[0]===4 && r[1]===5 && r[2]===6) &&
-                          !(r[0]===r[1] || r[1]===r[2]) &&
-                          !isHifumi;
-        return isHifumi || isNone;
-    }
-
-    function randomDiceResult() {
-        return [1,2,3,4,5,6].map(() => Math.floor(Math.random()*6)+1).sort((a,b)=>a-b);
-    }
-
-    function applyLuckToResult(physicsRes, lm) {
-        if(lm === 1) return physicsRes; // LM=1はそのまま
-
-        let res = physicsRes;
-        let rerolled = false;
-
-        if(lm > 1 && isBadResult(res)) {
-            const rerollChance = 1 - (1 / lm);
-            const MAX_REROLLS = 3;
-            for(let i = 0; i < MAX_REROLLS; i++) {
-                if(Math.random() < rerollChance) {
-                    res = randomDiceResult();
-                    rerolled = true;
-                    if(!isBadResult(res)) break;
-                } else {
-                    break;
-                }
+    // ラックマルチ: 勝利時に確率で配当ボーナス
+    // LM>1 → 勝った時にLMを配当に乗算する確率アップ
+    // LM<1 → 逆に配当が下がる確率アップ
+    function applyLuckBonus(baseMult) {
+        const LM = window.LUCK_MULTI || 1;
+        if(LM === 1) return baseMult;
+        // LM>1: (1 - 1/LM) の確率でLM倍ボーナス発動
+        // LM=2→50%, LM=4→75%, LM=10→90%
+        if(LM > 1) {
+            const chance = 1 - (1 / LM);
+            if(Math.random() < chance) {
+                document.getElementById('accident-log').innerText = `⭐ LUCK BONUS x${LM}!`;
+                setTimeout(() => { document.getElementById('accident-log').innerText = ''; }, 2000);
+                return baseMult * LM;
             }
-        } else if(lm < 1 && !isBadResult(res)) {
-            const rerollChance = 1 - lm;
-            const MAX_REROLLS = 3;
-            for(let i = 0; i < MAX_REROLLS; i++) {
-                if(Math.random() < rerollChance) {
-                    res = randomDiceResult();
-                    rerolled = true;
-                    if(isBadResult(res)) break;
-                } else {
-                    break;
-                }
+        } else if(LM < 1) {
+            // LM<1: (1 - LM) の確率で配当がLM倍に減少
+            const chance = 1 - LM;
+            if(Math.random() < chance) {
+                document.getElementById('accident-log').innerText = `💀 BAD LUCK x${LM}`;
+                setTimeout(() => { document.getElementById('accident-log').innerText = ''; }, 2000);
+                return baseMult * LM;
             }
         }
-
-        // リロールが発生した場合、ダイスの見た目を結果に合わせて強制更新
-        if(rerolled) {
-            res.forEach((val, i) => forceDiceFaceUp(i, val));
-        }
-
-        return res;
+        return baseMult;
     }
 
     function judge() {
@@ -730,16 +701,10 @@
         });
         if(out || isFoul) { document.getElementById('msg').innerText = out ? "場外没収" : "FOUL!!"; consecutiveWins = 0; saveData(); updateUI(); return; }
 
-        let res = diceBodies.map(b => getUpwardFace(b)).sort();
-        if(window.isMagneticStorm) res = res.map(() => Math.floor(Math.random()*6)+1).sort();
+        let res = diceBodies.map(b => getUpwardFace(b)).sort((a,b)=>a-b);
+        if(window.isMagneticStorm) res = res.map(() => Math.floor(Math.random()*6)+1).sort((a,b)=>a-b);
         if(equippedTool === 't-mag' && Math.random() < 0.2) res = [1,1,1];
 
-        // ========== ラックマルチ: 確率操作 ==========
-        // LM=1→通常, LM>1→いい目が出やすく悪い目減少, LM<1→逆
-        const LM = window.LUCK_MULTI || 1;
-        res = applyLuckToResult(res, LM);
-
-        // 配当率を動的に参照
         const P_PINZORO   = window.PAYOUT_PINZORO   || 5;
         const P_ZORO      = window.PAYOUT_ZORO      || 3;
         const P_SHIGOZORO = window.PAYOUT_SHIGOZORO || 2;
@@ -747,15 +712,13 @@
 
         let mult = 0;
         if(res[0]===res[1] && res[1]===res[2]) {
-            mult = (res[0]===1 ? P_PINZORO : P_ZORO);
-            totalWins++;
-            consecutiveWins++;
+            mult = applyLuckBonus(res[0]===1 ? P_PINZORO : P_ZORO);
+            totalWins++; consecutiveWins++;
             checkMission(1);
             if(res[0]===1) checkMission(3);
         } else if(res[0]===4 && res[1]===5 && res[2]===6) {
-            mult = P_SHIGOZORO;
-            totalWins++;
-            consecutiveWins++;
+            mult = applyLuckBonus(P_SHIGOZORO);
+            totalWins++; consecutiveWins++;
             checkMission(17);
         } else if(res[0]===1 && res[1]===2 && res[2]===3) {
             mult = -1;
@@ -763,9 +726,8 @@
             hifumiCount++;
             if(hifumiCount >= 3) checkMission(28);
         } else if(res[0]===res[1] || res[1]===res[2]) {
-            mult = P_PAIR;
-            totalWins++;
-            consecutiveWins++;
+            mult = applyLuckBonus(P_PAIR);
+            totalWins++; consecutiveWins++;
         } else {
             consecutiveWins = 0;
         }
@@ -774,7 +736,7 @@
         else if(mult > 0) {
             const winAmt = Math.floor(currentBet * mult);
             money += winAmt; totalEarned += winAmt;
-            document.getElementById('msg').innerText = `当たり x${mult}!`;
+            document.getElementById('msg').innerText = `当たり x${mult.toFixed(1)}!`;
         } else { document.getElementById('msg').innerText = "目なし"; }
 
         // 連勝ミッション
@@ -808,7 +770,6 @@
 
         saveData(); updateUI();
     }
-
     function getUpwardFace(body) {
         const faces = [{v: new THREE.Vector3(0,1,0), val: 1}, {v: new THREE.Vector3(0,-1,0), val: 6}, {v: new THREE.Vector3(1,0,0), val: 3}, {v: new THREE.Vector3(-1,0,0), val: 4}, {v: new THREE.Vector3(0,0,1), val: 5}, {v: new THREE.Vector3(0,0,-1), val: 2}];
         let max = -1, result = 1;
