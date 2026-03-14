@@ -413,6 +413,7 @@
             <button class="item-btn" id="btn-s-gold" onclick="buyItem('s-gold', 30000)">黄金スキン <span class="price">$30k</span></button>
             <button class="item-btn" id="btn-s-cyber" onclick="buyItem('s-cyber', 100000)">電脳スキン <span class="price">$100k</span></button>
             <button class="item-btn" id="btn-s-prism" onclick="buyItem('s-prism', 500000)">メタリックスキン <span class="price">$500k</span></button>
+            <button class="item-btn" id="btn-s-glass" onclick="buyItem('s-glass', 2000000)">ガラスダイス <span class="price">$2M</span></button>
         </div>
     </div>
 
@@ -530,7 +531,7 @@
     let clearedMissions = [], taxTimeLeft = 60;
     let consecutiveWins = 0, hifumiCount = 0, tokuseiUsed = false;
     let scene, camera, renderer, world, diceBodies = [], diceMeshes = [];
-    const SKINS = { 's-def': 0xffffff, 's-gold': 0xffd700, 's-cyber': 0xbc00ff, 's-prism': 0xc0c0c0 };
+    const SKINS = { 's-def': 0xffffff, 's-gold': 0xffd700, 's-cyber': 0xbc00ff, 's-prism': 0xc0c0c0, 's-glass': 'glass' };
 
     function triggerAccident() {
         const log = document.getElementById('accident-log');
@@ -872,6 +873,7 @@
             if(id === 's-gold') checkMission(12);
             if(id === 's-cyber') checkMission(26);
             if(id === 's-prism') checkMission(15);
+            if(id === 's-glass') checkMission(15);
         } else { alert("金が足りないぜ！"); return; }
         saveData(); updateUI();
     };
@@ -912,6 +914,48 @@
                     specular: new THREE.Color(0xffffff),
                     shininess: 120,
                     reflectivity: 1.0,
+                }));
+            }
+            m.material = faceMats;
+        });
+    } else if (id === 's-glass') {
+        // ガラス質感
+        diceMeshes.forEach(m => {
+            const faceMats = [];
+            for (let fi = 0; fi < 6; fi++) {
+                const val = [3,4,1,6,5,2][fi];
+                const canvas = document.createElement('canvas');
+                canvas.width = 128; canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                // 透明っぽい薄い青みがかった背景
+                ctx.clearRect(0,0,128,128);
+                ctx.fillStyle = 'rgba(180,220,255,0.18)'; ctx.fillRect(0,0,128,128);
+                // ハイライト（光の反射っぽく）
+                const grad = ctx.createLinearGradient(0,0,80,80);
+                grad.addColorStop(0, 'rgba(255,255,255,0.55)');
+                grad.addColorStop(0.4, 'rgba(255,255,255,0.08)');
+                grad.addColorStop(1, 'rgba(180,220,255,0.0)');
+                ctx.fillStyle = grad; ctx.fillRect(0,0,128,128);
+                // ドット
+                const dot = (x,y) => {
+                    ctx.beginPath(); ctx.arc(x,y,16,0,Math.PI*2);
+                    ctx.fillStyle='rgba(255,255,255,0.7)'; ctx.fill();
+                    ctx.beginPath(); ctx.arc(x,y,11,0,Math.PI*2);
+                    ctx.fillStyle=(val===1)?'rgba(200,0,0,0.9)':'rgba(20,20,60,0.85)'; ctx.fill();
+                };
+                if(val===1) dot(64,64);
+                else if(val===2){dot(30,30);dot(98,98);}
+                else if(val===3){dot(30,30);dot(64,64);dot(98,98);}
+                else if(val===4){dot(30,30);dot(98,30);dot(30,98);dot(98,98);}
+                else if(val===5){dot(30,30);dot(98,30);dot(64,64);dot(30,98);dot(98,98);}
+                else if(val===6){dot(30,30);dot(98,30);dot(30,64);dot(98,64);dot(30,98);dot(98,98);}
+                faceMats.push(new THREE.MeshPhongMaterial({
+                    map: new THREE.CanvasTexture(canvas),
+                    transparent: true,
+                    opacity: 0.55,
+                    specular: new THREE.Color(0xffffff),
+                    shininess: 200,
+                    side: THREE.DoubleSide,
                 }));
             }
             m.material = faceMats;
