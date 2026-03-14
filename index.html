@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>電脳チンチロ - TITANS ULTIMATE</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎲</text></svg>">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
     <script type="module">
@@ -531,7 +530,7 @@
     let clearedMissions = [], taxTimeLeft = 60;
     let consecutiveWins = 0, hifumiCount = 0, tokuseiUsed = false;
     let scene, camera, renderer, world, diceBodies = [], diceMeshes = [];
-    const SKINS = { 's-def': 0xffffff, 's-gold': 0xffd700, 's-cyber': 0xbc00ff, 's-prism': 0x00ffcc };
+    const SKINS = { 's-def': 0xffffff, 's-gold': 0xffd700, 's-cyber': 0xbc00ff, 's-prism': 'rainbow' };
 
     function triggerAccident() {
         const log = document.getElementById('accident-log');
@@ -674,13 +673,25 @@
         const log = document.getElementById('accident-log');
 
         if(LM > 1) {
-            // ボーナス倍率は常に2倍固定、確率だけLMで変化
-            // LM=2→10%, LM=3→20%, ..., LM=10→80%, LM=11→90%, LM=20→確定(100%)
-            const chance = Math.min((LM - 1) * 0.1, 1.0);
-            if(Math.random() < chance) {
-                log.innerText = `⭐ LUCK BONUS x2!`;
-                setTimeout(() => { log.innerText = ''; }, 2000);
-                return baseMult * 2;
+            if(LM <= 10) {
+                // LM=2→10%, LM=3→20%, ..., LM=10→80%
+                const chance = (LM - 1) * 0.1;
+                if(Math.random() < chance) {
+                    log.innerText = `⭐ LUCK BONUS x${LM}!`;
+                    setTimeout(() => { log.innerText = ''; }, 2000);
+                    return baseMult * LM;
+                }
+            } else {
+                // LM=11以上: 1回目は確定ボーナス、さらに(LM-10)*10%の確率で2回目ボーナス
+                let result = baseMult * LM;
+                log.innerText = `⭐ LUCK BONUS x${LM}!`;
+                const extraChance = (LM - 10) * 0.1;
+                if(Math.random() < extraChance) {
+                    result = result * LM;
+                    log.innerText = `🌟 DOUBLE LUCK!! x${LM}x${LM}!`;
+                }
+                setTimeout(() => { log.innerText = ''; }, 2500);
+                return result;
             }
         } else if(LM < 1) {
             // LM<1: (1-LM)*100% の確率で配当がLM倍に減少
@@ -860,7 +871,17 @@
         saveData(); updateUI();
     };
 
-    window.setSkin = (id) => { const mats = createDiceMat(SKINS[id], id !== 's-def'); diceMeshes.forEach(m => m.material = mats); };
+    window.setSkin = (id) => {
+    if (id === 's-prism') {
+        // レインボーは単色じゃなくアニメーション側で処理
+        diceMeshes.forEach(m => m.userData.rainbow = true);
+        diceMeshes.forEach(m => m.material = createDiceMat(0xff0000, true));
+    } else {
+        diceMeshes.forEach(m => m.userData.rainbow = false);
+        const mats = createDiceMat(SKINS[id], id !== 's-def');
+        diceMeshes.forEach(m => m.material = mats);
+    }
+};
     function checkMission(id) { if(clearedMissions.includes(id)) return; const btn = document.getElementById('gb-'+id); if(btn) { btn.disabled = false; btn.classList.add('can-claim'); } }
     window.claimMission = (id, reward) => { money += reward; clearedMissions.push(id); updateUI(); saveData(); };
 
@@ -949,7 +970,33 @@
         clearedMissions.forEach(id => { const b = document.getElementById('gb-'+id); if(b) { b.innerText = "済"; b.disabled = true; b.classList.remove('can-claim'); } });
     }
 
-    function animate() { requestAnimationFrame(animate); world.step(1/60); diceBodies.forEach((b, i) => { diceMeshes[i].position.copy(b.position); diceMeshes[i].quaternion.copy(b.quaternion); }); renderer.render(scene, camera); }
+    function animate() {
+    requestAnimationFrame(animate);
+    world.step(1/60);
+    diceBodies.forEach((b, i) => {
+        diceMeshes[i].position.copy(b.position);
+        diceMeshes[i].quaternion.copy(b.quaternion);
+    });
+    // レインボーアニメーション
+    if (equippedSkin === 's-prism') {
+        const t = Date.now() * 0.001;
+        diceMeshes.forEach((m, mi) => {
+            if (!m.userData.rainbow) return;
+            // 各面を少しずつ位相をずらした色に
+            if (Array.isArray(m.material)) {
+                m.material.forEach((mat, fi) => {
+                    const hue = ((t * 0.5 + mi * 0.15 + fi * 0.12) % 1);
+                    const col = new THREE.Color().setHSL(hue, 1.0, 0.6);
+                    mat.color.set(col);
+                    mat.emissive.set(col);
+                    mat.emissiveIntensity = 0.6;
+                    mat.needsUpdate = false;
+                });
+            }
+        });
+    }
+    renderer.render(scene, camera);
+}
     init(); animate(); loadData();
 </script>
 </body>
