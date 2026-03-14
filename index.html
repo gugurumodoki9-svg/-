@@ -991,7 +991,7 @@
             if (Array.isArray(m.material)) {
                 m.material.forEach((mat, fi) => {
                     const hue = ((t * 0.5 + mi * 0.15 + fi * 0.12) % 1);
-                    const col = new THREE.Color().setHSL(hue, 0.7, 0.45);
+                    const col = new THREE.Color().setHSL(hue, 0.8, 0.55);
                     mat.color.set(col);
                     mat.emissive.set(col);
                     mat.emissiveIntensity = 0.2;
