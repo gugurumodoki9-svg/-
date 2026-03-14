@@ -1,1073 +1,1087 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎰</text></svg>">
-<title>超インフレ・パチンコ【THE FINAL】</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>電脳チンチロ - TITANS ULTIMATE</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDocs, collection, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-<style>
-* { box-sizing: border-box; }
-body { background:#050505; color:#fff; font-family:sans-serif; display:flex; flex-direction:column; align-items:center; padding:20px; margin:0; min-height:100vh; }
+        const firebaseConfig = {
+            apiKey: "AIzaSyDYRzA0EbyZi5u2zN8eYR12wc2xRrP5OLg",
+            authDomain: "babanuki-a14f8.firebaseapp.com",
+            projectId: "babanuki-a14f8",
+            storageBucket: "babanuki-a14f8.firebasestorage.app",
+            messagingSenderId: "435555156417",
+            appId: "1:435555156417:web:f7e19c3a5e3c2c16df2f40",
+            measurementId: "G-0QB546TX38"
+        };
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const provider = new GoogleAuthProvider();
+        let currentUser = null;
 
-/* ログイン */
-#login-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:60vh; gap:20px; }
-.login-btn-fancy { background:#fff; color:#757575; border:none; padding:12px 24px; font-size:16px; font-weight:bold; border-radius:4px; display:flex; align-items:center; gap:12px; cursor:pointer; }
+        onAuthStateChanged(auth, (user) => {
+            currentUser = user;
+            const loginArea = document.getElementById('login-area');
+            if (user) {
+                loginArea.innerHTML = `<span style="color:#0ff; font-size:12px;">👤 ${user.displayName}</span>
+                <button class="cyber-btn-s" onclick="saveRank()">同期</button>
+                <button class="cyber-btn-s" onclick="logout()">ログアウト</button>`;
+            } else {
+                loginArea.innerHTML = `<button class="cyber-btn-s" onclick="login()">Googleログイン</button>`;
+            }
+        });
 
-/* ゲームコンテナ */
-#pachinko-container { display:none; width:100%; max-width:1100px; flex-direction:column; gap:12px; }
-#game-main { display:flex; gap:20px; align-items:flex-start; }
+        // ランキングの自動更新 (リアルタイム監視)
+        onSnapshot(query(collection(db, "ranking"), orderBy("money", "desc"), limit(5)), (snap) => {
+            const list = document.getElementById('rich-list'); list.innerHTML = "";
+            let i = 1; snap.forEach(doc => {
+                const d = doc.data(); list.innerHTML += `<li>${i}. ${d.name.substring(0,8)}: $${(d.money||0).toLocaleString()}</li>`; i++;
+            });
+            while(i <= 5) { list.innerHTML += `<li>${i}. ---</li>`; i++; }
+        });
 
-/* 筐体 */
-#pachinko-machine { background:#151515; border:6px solid #333; border-radius:20px; padding:15px; width:330px; flex-shrink:0; }
-#kakuhen-lamp { text-align:center; font-weight:bold; padding:4px; margin-bottom:6px; border-radius:4px; background:#111; }
-.kakuhen-mode #kakuhen-lamp { background:#f00; animation:kakuhen-flash 0.5s infinite; }
-@keyframes kakuhen-flash { 0%,100%{opacity:1} 50%{opacity:0.5} }
-#slot-container { background:#000; border:4px solid #444; border-radius:12px; margin-bottom:10px; padding:10px; text-align:center; }
-#slot-display { font-size:40px; display:flex; justify-content:center; gap:15px; height:60px; align-items:center; }
-#combo-display { font-size:12px; color:#f0f; margin-top:5px; font-weight:bold; }
-canvas { background:#000; display:block; margin:0 auto; border:2px solid #222; border-radius:5px; }
-#stock-lamps { text-align:center; font-size:18px; letter-spacing:4px; padding:4px 0; }
-#controls { margin-top:8px; }
-#shootBtn { width:100%; background:linear-gradient(#00ced1,#008b8b); padding:15px; font-size:18px; color:#fff; border:none; border-bottom:4px solid #005f5f; border-radius:6px; cursor:pointer; font-weight:bold; margin-bottom:6px; }
-.buy-btn { width:100%; background:#333; color:#fff; border:none; border-radius:6px; padding:10px; cursor:pointer; font-weight:bold; }
-#stats { margin-top:8px; font-size:14px; line-height:1.8; }
-#luck-multi-display { font-size:10px; color:#a0f; }
-#debt-display { font-size:10px; color:#f44; font-weight:bold; display:none; }
+        onSnapshot(query(collection(db, "ranking"), orderBy("debt", "desc"), limit(5)), (snap) => {
+            const list = document.getElementById('debt-list'); list.innerHTML = "";
+            let j = 1; snap.forEach(doc => {
+                const d = doc.data(); list.innerHTML += `<li>${j}. ${d.name.substring(0,8)}: $${(d.debt||0).toLocaleString()}</li>`; j++;
+            });
+            while(j <= 5) { list.innerHTML += `<li>${j}. ---</li>`; j++; }
+        });
 
-/* 借金パネル */
-#debt-panel { background:#111; border:2px solid #333; border-radius:8px; padding:10px; margin-top:8px; transition:border-color 0.3s, background 0.3s; }
-#debt-panel.in-debt { border-color:#f44; background:#1a0000; }
-#debt-panel-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
-#debt-panel-label { font-size:10px; color:#888; letter-spacing:1px; }
-#debt-panel-amount { font-size:16px; font-weight:bold; color:#555; transition:color 0.3s; }
-#debt-panel.in-debt #debt-panel-amount { color:#f44; }
-#debt-panel-controls { display:flex; gap:4px; }
-#debt-panel-controls input { flex:1; background:#000; border:1px solid #444; color:#fff; padding:5px; border-radius:4px; font-size:11px; min-width:0; }
-#debt-panel-controls button { border:none; border-radius:4px; padding:5px 8px; font-size:10px; font-weight:bold; cursor:pointer; white-space:nowrap; }
+        // 無限ギフト防止用監視
+        onSnapshot(doc(db, "system", "global_gift"), (snapshot) => {
+            const data = snapshot.data();
+            if (data && data.amount > 0) {
+                const giftId = localStorage.getItem('last_gift_id');
+                if (String(data.timestamp) !== giftId) {
+                    const gb = document.getElementById('gift-box');
+                    document.getElementById('gift-msg').innerText = `管理者からの贈り物: $${data.amount.toLocaleString()}`;
+                    window.pendingGift = data.amount;
+                    window.currentGiftTs = String(data.timestamp);
+                    gb.style.display = 'block';
+                    gb.classList.add('pulse-gold');
+                }
+            }
+        });
 
-/* サイドパネル */
-#side-panel { flex:1; background:#1a1a1a; padding:15px; border-radius:12px; border:2px solid #333; align-self:flex-start; }
-.side-flex { display:flex; gap:15px; }
-.side-left { flex:1; display:flex; flex-direction:column; gap:12px; }
-.side-right { flex:1.6; display:flex; flex-direction:column; gap:12px; }
-.panel-section { }
-.panel-title { font-size:14px; margin:0 0 8px 0; border-bottom:2px solid #333; padding-bottom:5px; }
-.shop-scroll { overflow-y:auto; max-height:380px; padding-right:4px; }
-.shop-cat { font-size:10px; color:#666; margin:8px 0 4px; }
-.shop-item { background:#252525; padding:10px; margin-bottom:4px; border-radius:5px; cursor:pointer; border:1px solid #333; display:flex; justify-content:space-between; font-size:11px; align-items:center; }
-.shop-item:hover { background:#2f2f2f; }
-.shop-item.equipped { border:2px solid #0ff; background:#102525; box-shadow:0 0 8px #0ff44; }
-.shop-item-desc { font-size:9px; color:#888; margin-top:2px; }
+        // ニュース監視（全プレイヤーにリアルタイム反映）
+        onSnapshot(doc(db, "system", "news"), (snapshot) => {
+            const data = snapshot.data();
+            if (data && data.messages && data.messages.length > 0) {
+                window.newsMessages = data.messages;
+            } else {
+                window.newsMessages = [];
+            }
+            // startNewsTickerはwindow経由で遅延呼び出し（モジュール境界対策）
+            setTimeout(() => { if(typeof window.startNewsTicker === 'function') window.startNewsTicker(); }, 100);
+        });
 
-/* 換金所 */
-.ex-btn { flex:1; height:50px; border:none; border-radius:8px; font-weight:bold; cursor:pointer; color:#fff; box-shadow:0 4px 0 #000; font-size:12px; }
-.ex-btn:active { transform:translateY(2px); box-shadow:none; }
-.bronze { background:#cd7f32; } .silver { background:#aaa; color:#000; } .gold { background:#ffd700; color:#000; }
-#prize-exchange-area { display:flex; gap:6px; }
+        // 配当変更監視（ラックマルチも含む）
+        onSnapshot(doc(db, "system", "payouts"), (snapshot) => {
+            const data = snapshot.data();
+            if (data) {
+                if (data.pinzoro !== undefined) window.PAYOUT_PINZORO = data.pinzoro;
+                if (data.zoro !== undefined) window.PAYOUT_ZORO = data.zoro;
+                if (data.shigozoro !== undefined) window.PAYOUT_SHIGOZORO = data.shigozoro;
+                if (data.pair !== undefined) window.PAYOUT_PAIR = data.pair;
+                if (data.luck_multi !== undefined) {
+                    window.LUCK_MULTI = data.luck_multi;
+                    const el = document.getElementById('luck-multi-display');
+                    if (el) el.innerText = `LUCK MULTI: x${data.luck_multi}`;
+                }
+            }
+        });
 
-/* ランキング・ミッション */
-.list-container { background:#000; padding:8px; border-radius:8px; font-size:11px; overflow-y:auto; }
-.ranking-box { height:100px; }
-.mission-box { height:280px; }
-.rank-item { display:flex; justify-content:space-between; padding:3px 0; border-bottom:1px solid #1a1a1a; }
-.mission-item { padding:5px 4px; border-bottom:1px solid #222; color:#888; display:flex; flex-direction:column; gap:2px; }
-.mission-item.done { color:#0f0; }
-.mission-item.claimable { color:#ff0; background:rgba(0,255,0,0.05); border-left:2px solid #0f0; padding-left:6px; }
-.mission-reward { font-size:9px; color:#666; }
-.claim-btn { background:#0f0; color:#000; border:none; border-radius:3px; padding:3px 8px; font-size:9px; font-weight:bold; cursor:pointer; margin-top:2px; width:100%; }
+        window.login = () => signInWithPopup(auth, provider);
+        window.logout = () => signOut(auth);
+        window.saveRank = async () => {
+            if (!currentUser) return;
+            const m = Math.max(0, parseInt(localStorage.getItem('p_money')) || 0);
+            const d = parseInt(localStorage.getItem('p_debt')) || 0;
+            await setDoc(doc(db, "ranking", currentUser.uid), { name: currentUser.displayName, money: m, debt: d, updatedAt: Date.now() });
+        };
 
-/* 下部ボタン */
-.bottom-btns { display:flex; gap:5px; margin-top:4px; }
-.bottom-btns button { flex:1; border:none; border-radius:6px; padding:12px; font-weight:bold; cursor:pointer; }
-.btn-gift { background:#9400d3; color:#fff; }
-.btn-admin { background:#ffd700; color:#000; }
-.btn-reset { background:#400; color:#f66; font-size:10px; flex:0.5 !important; }
-.btn-ad { background:#0a0; color:#fff; }
+        window.distributeMoney = async () => {
+            const amt = parseInt(document.getElementById('admin-dist-amt').value);
+            if(isNaN(amt) || amt <= 0) return alert("金額を入れてくれ");
+            await setDoc(doc(db, "system", "global_gift"), { amount: amt, timestamp: Date.now() });
+            alert(`配布完了！`);
+        };
 
-/* ニュースバー */
-#news-bar { display:none; width:100%; background:#000; border:2px solid #0ff; border-radius:8px; align-items:center; overflow:hidden; box-shadow:0 0 10px rgba(0,255,255,0.2); }
-#news-dot { width:8px; height:8px; background:red; border-radius:50%; margin:0 10px; flex-shrink:0; animation:blink-dot 1s infinite; }
-#news-label { background:#0ff; color:#000; font-weight:bold; font-size:11px; padding:8px 12px; white-space:nowrap; flex-shrink:0; letter-spacing:2px; }
-#news-ticker-wrap { flex:1; overflow:hidden; padding:8px 0; }
-#news-ticker-text { white-space:nowrap; font-size:12px; color:#0ff; display:inline-block; animation:ticker-scroll 30s linear infinite; text-shadow:0 0 6px #0ff; }
-@keyframes ticker-scroll { 0%{transform:translateX(100vw)} 100%{transform:translateX(-100%)} }
-@keyframes blink-dot { 0%,100%{opacity:1} 50%{opacity:0.2} }
+        window.postNews = async () => {
+            const msg = document.getElementById('admin-news-input').value.trim();
+            if (!msg) return alert("ニュース内容を入れてくれ");
+            const existing = window.newsMessages || [];
+            const updated = [{ text: msg, timestamp: Date.now() }, ...existing].slice(0, 5);
+            await setDoc(doc(db, "system", "news"), { messages: updated });
+            document.getElementById('admin-news-input').value = '';
+            alert("ニュース投稿完了！");
+        };
 
-/* モーダル */
-.modal { position:fixed; inset:0; background:rgba(0,0,0,0.9); display:none; justify-content:center; align-items:center; z-index:1000; }
-.modal-content { background:#222; padding:20px; border-radius:12px; border:2px solid #0f0; width:290px; text-align:center; max-height:85vh; overflow-y:auto; }
-.admin-content { width:330px; }
-.styled-input { background:#000; color:#fff; border:1px solid #444; padding:8px; width:90%; margin-bottom:10px; border-radius:4px; }
-.styled-button { border-radius:6px; cursor:pointer; font-weight:bold; border:none; padding:10px 12px; }
-.close-btn { background:#444; color:#fff; width:100%; margin-top:10px; }
+        window.clearNews = async () => {
+            await setDoc(doc(db, "system", "news"), { messages: [] });
+            // onSnapshotが拾って全プレイヤーのtickerも自動リセットされる
+            alert("ニュースをクリアしたぜ");
+        };
 
-/* 管理者パネル */
-.adm-section { border:1px solid #444; border-radius:6px; padding:10px; margin-bottom:10px; text-align:left; }
-.adm-section-title { font-size:10px; color:#0ff; letter-spacing:2px; text-transform:uppercase; margin-bottom:8px; padding-bottom:4px; border-bottom:1px solid #333; text-align:center; }
-.adm-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; margin-bottom:8px; width:100%; box-sizing:border-box; }
-.adm-grid label { font-size:9px; color:#aaa; display:flex; flex-direction:column; gap:2px; min-width:0; }
-.adm-grid input { background:#111; border:1px solid #444; color:#fff; padding:5px; border-radius:3px; font-size:11px; width:100%; box-sizing:border-box; min-width:0; }
-.adm-btn { width:100%; border:none; border-radius:4px; padding:8px; font-weight:bold; cursor:pointer; margin-top:4px; }
-.event-item { padding:6px 4px; border-bottom:1px solid #222; color:#fcc; }
-.event-item-title { font-weight:bold; color:#f88; margin-bottom:2px; }
-.event-item-body { color:#aaa; font-size:10px; }
-.no-event { color:#444; font-style:italic; }
-.event-progress-wrap { background:#111; border-radius:4px; height:14px; margin:6px 0; border:1px solid #333; overflow:hidden; }
-.event-progress-bar { height:100%; background:linear-gradient(90deg,#f55,#ff0); border-radius:4px; transition:width 0.5s; }
-.event-title { font-weight:bold; color:#f88; margin-bottom:4px; font-size:12px; }
-.event-amount { display:flex; justify-content:space-between; color:#aaa; margin-top:4px; }
-.event-complete { text-align:center; color:#ff0; font-weight:bold; font-size:13px; animation:kakuhen-flash 0.8s infinite; }
-.event-active { border:2px solid #f55 !important; box-shadow:0 0 12px rgba(255,85,85,0.5); animation:event-glow 1.5s ease-in-out infinite; }
-@keyframes event-glow { 0%,100%{box-shadow:0 0 8px rgba(255,85,85,0.4)} 50%{box-shadow:0 0 18px rgba(255,85,85,0.8)} }
-</style>
+        window.updatePayouts = async () => {
+            const pinzoro = parseFloat(document.getElementById('payout-pinzoro').value);
+            const zoro = parseFloat(document.getElementById('payout-zoro').value);
+            const shigozoro = parseFloat(document.getElementById('payout-shigozoro').value);
+            const pair = parseFloat(document.getElementById('payout-pair').value);
+            if([pinzoro, zoro, shigozoro, pair].some(isNaN)) return alert("全部数値を入れてくれ");
+            await setDoc(doc(db, "system", "payouts"), { pinzoro, zoro, shigozoro, pair, luck_multi: window.LUCK_MULTI || 1, updatedAt: Date.now() });
+            alert("配当率を更新したぜ！");
+        };
+
+        window.applyLuckMulti = async () => {
+            const lm = parseFloat(document.getElementById('admin-luck-multi').value);
+            if(isNaN(lm) || lm < 0) return alert("正しい値を入れてくれ");
+            await setDoc(doc(db, "system", "payouts"), {
+                pinzoro: window.PAYOUT_PINZORO || 5,
+                zoro: window.PAYOUT_ZORO || 3,
+                shigozoro: window.PAYOUT_SHIGOZORO || 2,
+                pair: window.PAYOUT_PAIR || 1.5,
+                luck_multi: lm,
+                updatedAt: Date.now()
+            });
+            alert(`ラックマルチを x${lm} に変更して全員に反映したぜ！`);
+        };
+
+        window.checkAdmin = () => {
+            if(document.getElementById('admin-input').value === "admin777") {
+                // 現在の配当値をフォームにセット
+                document.getElementById('payout-pinzoro').value = window.PAYOUT_PINZORO || 5;
+                document.getElementById('payout-zoro').value = window.PAYOUT_ZORO || 3;
+                document.getElementById('payout-shigozoro').value = window.PAYOUT_SHIGOZORO || 2;
+                document.getElementById('payout-pair').value = window.PAYOUT_PAIR || 1.5;
+                document.getElementById('admin-luck-multi').value = window.LUCK_MULTI || 1;
+                document.getElementById('admin-overlay').style.display = 'flex';
+            } else { alert("コードが違うぜ"); }
+        };
+
+        window.setMyMoney = () => {
+            const amt = parseInt(document.getElementById('admin-my-money').value);
+            if(isNaN(amt)) return;
+            money = amt; saveData(); updateUI(); alert("書き換えたぜ。");
+        };
+    </script>
+    <style>
+        :root { --neon: #0ff; --pink: #f0f; --gold: #ff0; --red: #ff4444; --bg-panel: #050505; }
+        body { background: #000; color: #fff; font-family: 'Courier New', monospace; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; overflow-x: auto; }
+        #login-area { width: 100%; max-width: 1250px; text-align: right; margin-bottom: 5px; }
+        #layout { display: flex; gap: 12px; justify-content: center; width: 100%; min-width: 1250px; align-items: stretch; }
+        .panel { background: var(--bg-panel); border: 2px solid var(--neon); border-radius: 12px; padding: 10px; box-shadow: 0 0 15px rgba(0, 255, 255, 0.1); display: flex; flex-direction: column; width: 270px; flex-shrink: 0; }
+        .sub-box { border: 1px solid var(--neon); border-radius: 6px; padding: 8px; margin-bottom: 8px; }
+        .title { font-size: 11px; font-weight: bold; color: var(--neon); border-bottom: 1px solid var(--neon); margin-bottom: 8px; padding-bottom: 4px; text-transform: uppercase; text-align: center; letter-spacing: 2px; }
+        
+        .item-btn { width: 100%; background: #111; border: 1px solid var(--pink); color: #fff; padding: 8px; margin-bottom: 6px; cursor: pointer; text-align: left; border-radius: 4px; font-size: 10px; position: relative; }
+        .item-btn .price { float: right; color: var(--gold); }
+        .item-btn.owned { border-color: var(--gold); color: var(--gold); }
+        .item-btn.equipped { border-color: var(--neon); color: var(--neon); background: #002222; box-shadow: inset 0 0 10px var(--neon); }
+        
+        #msg { position: absolute; width: 100%; top: 45%; font-size: 22px; font-weight: bold; text-align: center; pointer-events: none; z-index: 5; color: var(--gold); text-shadow: 0 0 15px var(--gold); }
+        #canvas-wrap { width: 220px; height: 220px; margin: 0 auto; border-radius: 50%; border: 3px solid var(--neon); position: relative; background: radial-gradient(circle, #111, #000); overflow: hidden; cursor: pointer; }
+        .money-display { font-size: 28px; color: var(--gold); font-weight: bold; text-align: center; text-shadow: 0 0 10px rgba(255, 255, 0, 0.5); }
+        .debt-display { font-size: 13px; color: var(--red); font-weight: bold; text-align: center; }
+        #betInput { background: #000; border: 2px solid var(--neon); color: var(--neon); padding: 5px; width: 80%; border-radius: 4px; text-align: center; margin: 8px 0; font-weight: bold; }
+        .main-btn { width: 100%; padding: 12px; background: var(--neon); color: #000; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; text-transform: uppercase; letter-spacing: 1px; }
+        
+        .mission-area { height: 200px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--neon) #000; }
+        .mission-list { list-style: none; padding: 0; margin: 0; }
+        .mission-list li { display: flex; justify-content: space-between; align-items: center; font-size: 9px; padding: 6px 0; border-bottom: 1px solid #1a1a1a; }
+        
+        .rank-list { list-style: none; padding: 0; margin: 0; font-size: 11px; line-height: 1.8; }
+        .cyber-btn-s { background: #000; border: 1px solid #fff; color: #fff; padding: 3px 6px; cursor: pointer; font-size: 10px; border-radius: 3px; }
+        
+        .title-sub-box { border: 1px solid var(--neon); border-radius: 6px; padding: 12px 8px; display:flex; flex-direction:column; align-items:center; justify-content:center; background:rgba(0,255,255,0.02); flex-grow: 1; margin-bottom: 0; }
+        .title-badge-wrap { position: relative; padding: 2px; border-radius: 4px; overflow: hidden; width: 90%; background: #000; border: 1px solid var(--gold); }
+        .title-badge { background: linear-gradient(135deg, #222, #000); color: #fff; font-size: 13px; font-weight: bold; padding: 12px 5px; border-radius: 2px; text-align: center; text-transform: uppercase; letter-spacing: 1px; box-shadow: inset 0 0 10px rgba(255,215,0,0.3); }
+        .luck-display { font-size: 10px; color: var(--neon); margin-top: 10px; font-weight: bold; }
+
+        .p-bar-bg { width: 100%; height: 4px; background: #222; margin-top: 3px; border-radius: 2px; overflow: hidden; }
+        .p-bar-fill { height: 100%; width: 0%; transition: width 0.5s; }
+        #admin-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 100; flex-direction: column; align-items: center; justify-content: center; overflow-y: auto; }
+        .admin-input-style { width:90%; padding:10px; margin-bottom:10px; background:#111; color:#fff; border:1px solid var(--pink); border-radius:4px; font-family: 'Courier New', monospace; }
+        .admin-panel-inner { max-height: 90vh; overflow-y: auto; width: 360px; }
+        
+        @keyframes pulse-g { 0%, 100% { border-color: var(--gold); } 50% { border-color: #fff; box-shadow: 0 0 20px var(--gold); } }
+        .pulse-gold { animation: pulse-g 1.5s infinite; }
+        .can-claim { background: var(--neon) !important; color: #000 !important; font-weight: bold; animation: blink 1s infinite; }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+        /* ニュースティッカー */
+        #news-bar {
+            width: 100%;
+            max-width: 1250px;
+            margin-top: 10px;
+            background: #000;
+            border: 2px solid var(--neon);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            overflow: hidden;
+            box-shadow: 0 0 20px rgba(0,255,255,0.2), inset 0 0 30px rgba(0,255,255,0.03);
+            position: relative;
+        }
+        #news-label {
+            background: var(--neon);
+            color: #000;
+            font-weight: bold;
+            font-size: 11px;
+            padding: 10px 14px;
+            letter-spacing: 2px;
+            white-space: nowrap;
+            flex-shrink: 0;
+            text-transform: uppercase;
+            z-index: 2;
+        }
+        #news-label-separator {
+            width: 2px;
+            height: 100%;
+            background: var(--neon);
+            box-shadow: 0 0 8px var(--neon);
+            flex-shrink: 0;
+        }
+        #news-ticker-wrap {
+            flex: 1;
+            overflow: hidden;
+            padding: 10px 0;
+            position: relative;
+        }
+        #news-ticker-text {
+            white-space: nowrap;
+            font-size: 13px;
+            color: var(--neon);
+            letter-spacing: 1px;
+            display: inline-block;
+            animation: ticker-scroll 30s linear infinite;
+            text-shadow: 0 0 8px var(--neon);
+        }
+        #news-ticker-text.paused {
+            animation-play-state: paused;
+        }
+        @keyframes ticker-scroll {
+            0%   { transform: translateX(100vw); }
+            100% { transform: translateX(-100%); }
+        }
+        #news-dot {
+            width: 8px; height: 8px;
+            background: var(--red);
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin: 0 12px;
+            box-shadow: 0 0 8px var(--red);
+            animation: blink-dot 1s infinite;
+        }
+        @keyframes blink-dot { 0%,100%{opacity:1} 50%{opacity:0.2} }
+
+        /* 配当表示バッジ */
+        #payout-display {
+            font-size: 9px;
+            color: #888;
+            text-align: center;
+            margin-top: 4px;
+            line-height: 1.6;
+        }
+        #payout-display span { color: var(--gold); }
+
+        /* 管理者パネルのセクション区切り */
+        .admin-section { border: 1px solid #333; border-radius: 6px; padding: 10px; margin-bottom: 12px; }
+        .admin-section-title { font-size: 10px; color: var(--neon); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #333; text-align: center; }
+        .payout-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+        .payout-item label { font-size: 9px; color: #aaa; display: block; margin-bottom: 3px; }
+        .payout-item input { width: 100%; padding: 6px; background: #111; color: var(--gold); border: 1px solid #444; border-radius: 3px; font-size: 11px; font-weight: bold; text-align: center; font-family: 'Courier New', monospace; box-sizing: border-box; }
+    </style>
 </head>
 <body>
 
-<!-- ログイン画面 -->
-<div id="login-screen">
-    <h1>💀 超インフレ・パチンコ</h1>
-    <p>最後の一玉まで、遊び尽くせ。</p>
-    <button id="google-login-btn" class="login-btn-fancy">
-        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="G" width="20">
-        Googleでログイン
-    </button>
-</div>
+<div id="login-area"></div>
+<div id="admin-overlay">
+    <div class="panel admin-panel-inner" style="border-color:var(--pink); width: 360px;">
+        <div class="title" style="color:var(--pink);">ADMIN CONSOLE</div>
 
-<!-- ゲーム画面 -->
-<div id="pachinko-container">
-    <div id="game-main">
+        <!-- 一斉配布 -->
+        <div class="admin-section">
+            <div class="admin-section-title" style="color:var(--pink);">💰 一斉配布</div>
+            <input type="number" id="admin-dist-amt" placeholder="配布金額" class="admin-input-style">
+            <button class="main-btn" onclick="distributeMoney()" style="background:var(--pink);">一斉配布実行</button>
+        </div>
 
-        <!-- 本体 -->
-        <div id="pachinko-machine">
-            <div id="kakuhen-lamp">通常</div>
-            <div id="slot-container">
-                <div id="slot-display">
-                    <span id="s1">🎰</span><span id="s2">🎰</span><span id="s3">🎰</span>
-                </div>
-                <div id="combo-display">連チャン数: <span id="combo-count">0</span></div>
-            </div>
-            <canvas id="pachinkoCanvas" width="300" height="340"></canvas>
-            <div id="stock-lamps">○○○○</div>
-            <div id="controls">
-                <button id="shootBtn">玉を発射</button>
-                <button class="buy-btn" id="btn-buy-balls">玉を購入 ($150)</button>
-            </div>
-            <div id="stats">
-                <div>💰 $<span id="money-display">0</span></div>
-                <div>🔮 <span id="balls-display">0</span>発</div>
-                <div id="luck-multi-display">LUCK x1</div>
-                <div id="debt-display"></div>
-            </div>
-            <!-- 借金パネル -->
-            <div id="debt-panel">
-                <div id="debt-panel-header">
-                    <span id="debt-panel-label">💀 借金残高</span>
-                    <span id="debt-panel-amount">$0</span>
-                </div>
-                <div id="debt-panel-controls">
-                    <input type="number" id="loan-input" placeholder="金額を入力...">
-                    <button id="btn-custom-loan" style="background:#f90;color:#000;">借りる</button>
-                    <button id="btn-repay" style="background:#f44;color:#fff;">返済</button>
-                    <button id="btn-repay-all" style="background:#900;color:#fff;">全額</button>
-                </div>
+        <!-- ニュース投稿 -->
+        <div class="admin-section">
+            <div class="admin-section-title" style="color:var(--neon);">📡 ニュース投稿</div>
+            <textarea id="admin-news-input" placeholder="ニュース内容を入力..." class="admin-input-style" style="height:60px; resize:none;"></textarea>
+            <div style="display:flex; gap:6px;">
+                <button class="main-btn" onclick="postNews()" style="background:var(--neon); flex:1;">投稿</button>
+                <button class="main-btn" onclick="clearNews()" style="background:#333; color:#fff; border:1px solid #666; flex:0.5; font-size:10px;">全消去</button>
             </div>
         </div>
 
-        <!-- サイドパネル -->
-        <div id="side-panel">
-            <div class="side-flex">
-                <!-- 左カラム: ショップ + 融資 -->
-                <div class="side-left">
-                    <div class="panel-section">
-                        <h2 class="panel-title" style="color:#0ff;">🛠 ショップ</h2>
-                        <div class="shop-scroll">
-                            <p class="shop-cat">▼ ツール</p>
-                            <div id="shop-tools"></div>
-                            <p class="shop-cat">▼ スキン</p>
-                            <div id="shop-skins"></div>
-                        </div>
-                    </div>
-                    <div class="panel-section">
-                        <h2 class="panel-title" style="color:#f90;">💸 融資</h2>
-                        <div id="shop-loans"></div>
-                    </div>
-                    <div class="panel-section">
-                        <h2 class="panel-title" style="color:#0cf;">📊 統計</h2>
-                        <div id="stats-panel" class="list-container" style="font-size:11px;line-height:2;padding:8px;min-height:110px;"></div>
-                    </div>
+        <!-- 配当率変更 -->
+        <div class="admin-section">
+            <div class="admin-section-title" style="color:var(--gold);">🎲 配当率変更</div>
+            <div class="payout-grid" style="margin-bottom:10px;">
+                <div class="payout-item">
+                    <label>ピンゾロ (x倍)</label>
+                    <input type="number" id="payout-pinzoro" step="0.5" min="1" value="5">
                 </div>
-                <!-- 右カラム: ランキング + 換金所 + ミッション + イベント -->
-                <div class="side-right">
-                    <div class="panel-section">
-                        <h2 class="panel-title" style="color:#ff0;">🏆 頂点 TOP5</h2>
-                        <div id="ranking-list" class="list-container ranking-box"></div>
-                    </div>
-                    <div class="panel-section">
-                        <h2 class="panel-title" style="color:#ffd700;">💱 換金所</h2>
-                        <div id="prize-exchange-area">
-                            <button class="ex-btn bronze" id="btn-ex-bronze">銅<br><span id="p-bronze">0</span></button>
-                            <button class="ex-btn silver" id="btn-ex-silver">銀<br><span id="p-silver">0</span></button>
-                            <button class="ex-btn gold" id="btn-ex-gold">金<br><span id="p-gold">0</span></button>
-                        </div>
-                    </div>
-                    <div class="panel-section">
-                        <h2 class="panel-title" style="color:#0f0;">🎯 ミッション</h2>
-                        <div id="mission-list" class="list-container mission-box"></div>
-                    </div>
-                    <div class="bottom-btns">
-                        <button class="btn-gift" id="btn-gift">🎁 ギフト</button>
-                        <button class="btn-ad" id="btn-ad">📺 広告</button>
-                        <button class="btn-admin" id="btn-admin">🔧 管理</button>
-                        <button class="btn-reset" id="btn-reset">リセット</button>
-                    </div>
-                    <div class="panel-section">
-                        <h2 class="panel-title" style="color:#f55;">🏅 コミュニティイベント</h2>
-                        <div id="event-panel" style="background:#000;border-radius:8px;padding:10px;font-size:11px;"></div>
-                    </div>
+                <div class="payout-item">
+                    <label>ゾロ目 (x倍)</label>
+                    <input type="number" id="payout-zoro" step="0.5" min="1" value="3">
+                </div>
+                <div class="payout-item">
+                    <label>456/シゴゾロ (x倍)</label>
+                    <input type="number" id="payout-shigozoro" step="0.5" min="1" value="2">
+                </div>
+                <div class="payout-item">
+                    <label>ペア目 (x倍)</label>
+                    <input type="number" id="payout-pair" step="0.5" min="1" value="1.5">
                 </div>
             </div>
+            <button class="main-btn" onclick="updatePayouts()" style="background:var(--gold); color:#000;">配当率を更新</button>
         </div>
-    </div>
 
-    <!-- ニュースバー -->
-    <div id="news-bar">
-        <div id="news-dot"></div>
-        <div id="news-label">LIVE NEWS</div>
-        <div id="news-ticker-wrap">
-            <span id="news-ticker-text">SYSTEM ONLINE --- 超インフレ・パチンコへようこそ ---</span>
+        <!-- ラックマルチ変更 -->
+        <div class="admin-section">
+            <div class="admin-section-title" style="color:#a0f;">🍀 ラックマルチ変更</div>
+            <p style="font-size:9px; color:#888; margin:0 0 6px; text-align:center;">勝利報酬にかかる倍率 / デフォルト: 1</p>
+            <input type="number" id="admin-luck-multi" step="0.1" min="0" value="1" placeholder="例: 1.5" class="admin-input-style" style="border-color:#a0f; text-align:center; font-size:18px; font-weight:bold; color:#a0f;">
+            <button class="main-btn" onclick="applyLuckMulti()" style="background:#a0f; color:#fff;">全員に反映</button>
         </div>
+
+        <!-- 所持金変更 -->
+        <div class="admin-section">
+            <div class="admin-section-title" style="color:#888;">🔧 デバッグ</div>
+            <input type="number" id="admin-my-money" placeholder="自分の所持金変更" class="admin-input-style">
+            <button class="main-btn" onclick="setMyMoney()" style="background:#555; color:#fff;">所持金変更</button>
+        </div>
+
+        <button onclick="document.getElementById('admin-overlay').style.display='none'" style="margin-top:10px; color:#888; background:none; border:1px solid #333; cursor:pointer; width:100%; padding:8px; border-radius:4px; font-family:'Courier New',monospace;">[ 閉じる ]</button>
     </div>
 </div>
 
-<!-- ギフトモーダル -->
-<div id="gift-modal" class="modal">
-    <div class="modal-content">
-        <h3>🎁 ギフト</h3>
-        <div id="gift-list"></div>
-        <button class="styled-button close-btn" id="btn-close-gift">閉じる</button>
+<div id="layout">
+    <div class="panel">
+        <div class="title">GAME FIELD</div>
+        <div id="accident-log" style="font-size:10px; color:var(--red); text-align:center; height:12px; margin-bottom:5px; font-weight:bold;"></div>
+        
+        <div id="canvas-wrap" onclick="addBurst()">
+            <div id="msg">BETして勝負</div>
+        </div>
+        <div class="sub-box" style="margin-top:10px; border:none;">
+            <div class="money-display">💰 <span id="money">0</span></div>
+            <div class="debt-display">DEBT: $<span id="debt">0</span></div>
+            <div id="tax-timer" style="font-size:10px; text-align:center; color:var(--red);">徴収まで: 60s</div>
+            <div style="text-align:center;"><input type="number" id="betInput" value="100"></div>
+            <button id="rollBtn" class="main-btn" onclick="rollDice()">ROLL DICE</button>
+            <div id="payout-display">
+                ピンゾロ:<span id="pd-pinzoro">x5</span> ゾロ目:<span id="pd-zoro">x3</span>
+                456:<span id="pd-shigozoro">x2</span> ペア:<span id="pd-pair">x1.5</span>
+            </div>
+            <div id="luck-multi-display" style="font-size:10px; color:#a0f; font-weight:bold; text-align:center; margin-top:3px;">LUCK MULTI: x1</div>
+            <button id="loanBtn" style="display:none; width:100%; background:var(--red); color:#fff; margin-top:8px; border:none; border-radius:8px; padding:10px; cursor:pointer;" onclick="takeLoan()">救済融資(+$1k)</button>
+        </div>
+        <div id="gift-box" class="sub-box" style="border-color:var(--gold); display:none; font-size:10px;">
+            <div id="gift-msg"></div>
+            <button class="cyber-btn-s can-claim" style="width:100%; margin-top:3px;" onclick="claimGift()">受取</button>
+        </div>
+    </div>
+
+    <div class="panel" style="border-color:var(--pink);">
+        <div class="title" style="color:var(--pink); border-color:var(--pink);">CYBER SHOP</div>
+        <div class="sub-box" style="border-color:var(--red);">
+            <div class="title" style="color:var(--red); border-color:var(--red);">EMERGENCY</div>
+            <button class="item-btn" id="btn-t-tokusei" onclick="useTokusei()">徳政令カード <span class="price" id="tokusei-price">$0</span></button>
+            <div id="tokusei-status" style="font-size:9px; color:#aaa; text-align:center; margin-top:-4px; margin-bottom:2px;"></div>
+        </div>
+        <div class="sub-box">
+            <div class="title">SUPPORT TOOLS</div>
+            <button class="item-btn" id="btn-t-grip" onclick="buyItem('t-grip', 5000)">滑り止め <span class="price">$5k</span></button>
+            <button class="item-btn" id="btn-t-heavy" onclick="buyItem('t-heavy', 50000)">重ダイス <span class="price">$50k</span></button>
+            <button class="item-btn" id="btn-t-mag" onclick="buyItem('t-mag', 250000)">電磁ダイス <span class="price">$250k</span></button>
+        </div>
+        <div class="sub-box">
+            <div class="title">DICE SKINS</div>
+            <button class="item-btn" id="btn-s-gold" onclick="buyItem('s-gold', 30000)">黄金スキン <span class="price">$30k</span></button>
+            <button class="item-btn" id="btn-s-cyber" onclick="buyItem('s-cyber', 100000)">電脳スキン <span class="price">$100k</span></button>
+            <button class="item-btn" id="btn-s-prism" onclick="buyItem('s-prism', 500000)">メタリックスキン <span class="price">$500k</span></button>
+            <button class="item-btn" id="btn-s-glass" onclick="buyItem('s-glass', 2000000)">🧊 氷ダイス <span class="price">$2M</span></button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="title">MISSIONS [MAX]</div>
+        <div class="sub-box mission-area">
+            <ul class="mission-list" id="m-list">
+                <li>ゾロ目を出せ <button class="cyber-btn-s" id="gb-1" disabled onclick="claimMission(1, 1000)">$1k</button></li>
+                <li>$10k到達 <button class="cyber-btn-s" id="gb-2" disabled onclick="claimMission(2, 5000)">$5k</button></li>
+                <li>ピンゾロ!! <button class="cyber-btn-s" id="gb-3" disabled onclick="claimMission(3, 50000)">$50k</button></li>
+                <li>借金完済 <button class="cyber-btn-s" id="gb-4" disabled onclick="claimMission(4, 10000)">$10k</button></li>
+                <li>10回プレイ <button class="cyber-btn-s" id="gb-6" disabled onclick="claimMission(6, 2000)">$2k</button></li>
+                <li>50回プレイ <button class="cyber-btn-s" id="gb-7" disabled onclick="claimMission(7, 20000)">$20k</button></li>
+                <li>100回プレイ <button class="cyber-btn-s" id="gb-14" disabled onclick="claimMission(14, 50000)">$50k</button></li>
+                <li>滑り止め購入 <button class="cyber-btn-s" id="gb-11" disabled onclick="claimMission(11, 2000)">$2k</button></li>
+                <li>電磁ダイス購入 <button class="cyber-btn-s" id="gb-8" disabled onclick="claimMission(8, 100000)">$100k</button></li>
+                <li>黄金スキン購入 <button class="cyber-btn-s" id="gb-12" disabled onclick="claimMission(12, 10000)">$10k</button></li>
+                <li>虹色スキン購入 <button class="cyber-btn-s" id="gb-15" disabled onclick="claimMission(15, 200000)">$200k</button></li>
+                <li>累計$100k稼ぐ <button class="cyber-btn-s" id="gb-9" disabled onclick="claimMission(9, 30000)">$30k</button></li>
+                <li>累計$1M稼ぐ <button class="cyber-btn-s" id="gb-16" disabled onclick="claimMission(16, 100000)">$100k</button></li>
+                <li>累計$10M稼ぐ <button class="cyber-btn-s" id="gb-13" disabled onclick="claimMission(13, 1000000)">$1M</button></li>
+                <li>博徒の頂点($1M) <button class="cyber-btn-s" id="gb-10" disabled onclick="claimMission(10, 500000)">$500k</button></li>
+                <!-- 追加ミッション -->
+                <li>シゴロを出せ <button class="cyber-btn-s" id="gb-17" disabled onclick="claimMission(17, 3000)">$3k</button></li>
+                <li>3回連続勝利 <button class="cyber-btn-s" id="gb-18" disabled onclick="claimMission(18, 8000)">$8k</button></li>
+                <li>5回連続勝利 <button class="cyber-btn-s" id="gb-19" disabled onclick="claimMission(19, 30000)">$30k</button></li>
+                <li>徳政令を使え <button class="cyber-btn-s" id="gb-20" disabled onclick="claimMission(20, 5000)">$5k</button></li>
+                <li>200回プレイ <button class="cyber-btn-s" id="gb-21" disabled onclick="claimMission(21, 150000)">$150k</button></li>
+                <li>500回プレイ <button class="cyber-btn-s" id="gb-22" disabled onclick="claimMission(22, 500000)">$500k</button></li>
+                <li>累計$50M稼ぐ <button class="cyber-btn-s" id="gb-23" disabled onclick="claimMission(23, 5000000)">$5M</button></li>
+                <li>所持金$5M達成 <button class="cyber-btn-s" id="gb-24" disabled onclick="claimMission(24, 1000000)">$1M</button></li>
+                <li>借金$100k超え <button class="cyber-btn-s" id="gb-25" disabled onclick="claimMission(25, 20000)">$20k</button></li>
+                <li>電脳スキン購入 <button class="cyber-btn-s" id="gb-26" disabled onclick="claimMission(26, 50000)">$50k</button></li>
+                <li>重ダイス購入 <button class="cyber-btn-s" id="gb-27" disabled onclick="claimMission(27, 20000)">$20k</button></li>
+                <li>ヒフミ地獄(3回) <button class="cyber-btn-s" id="gb-28" disabled onclick="claimMission(28, 15000)">$15k</button></li>
+                <li>勝率60%(20戦~) <button class="cyber-btn-s" id="gb-29" disabled onclick="claimMission(29, 50000)">$50k</button></li>
+                <li>累計$100M稼ぐ <button class="cyber-btn-s" id="gb-30" disabled onclick="claimMission(30, 10000000)">$10M</button></li>
+            </ul>
+        </div>
+        <div class="sub-box">
+            <div class="title">SYSTEM STATUS</div>
+            <div style="font-size:10px; line-height: 1.4;">
+                <div>WIN RATE: <span id="stat-winrate" style="color:var(--neon);">0%</span>
+                    <div class="p-bar-bg"><div id="bar-winrate" class="p-bar-fill" style="background:var(--neon);"></div></div>
+                </div>
+                <div style="margin-top:5px;">COLLECTION: <span id="stat-items">0</span>/7
+                    <div class="p-bar-bg"><div id="bar-items" class="p-bar-fill" style="background:var(--pink);"></div></div>
+                </div>
+            </div>
+            <button class="cyber-btn-s" style="width:100%; margin-top:8px; color:var(--red); border-color:var(--red);" onclick="payDebt()">DEBT REPAYMENT</button>
+        </div>
+        <div class="sub-box" style="border-color:#333; margin-top:auto; padding: 5px;">
+            <input type="password" id="admin-input" placeholder="admin code" style="width:65%; font-size:9px; background:#000; border:1px solid #444; color:#fff;">
+            <button class="cyber-btn-s" onclick="checkAdmin()">OK</button>
+        </div>
+    </div>
+
+    <div class="panel">
+        <div class="title">TITANS LEADERBOARD</div>
+        <div class="sub-box" style="border-color:var(--gold); flex: 1;"><div class="title" style="color:var(--gold);">RICH TOP5</div><ul id="rich-list" class="rank-list"></ul></div>
+        <div class="sub-box" style="border-color:var(--red); flex: 1;"><div class="title" style="color:var(--red);">DEBT TOP5</div><ul id="debt-list" class="rank-list"></ul></div>
+        <div class="title-sub-box">
+            <div class="title" style="color:var(--neon); border:none; margin-bottom:10px;">TITANS RANK</div>
+            <div class="title-badge-wrap">
+                <div class="title-badge" id="main-title">駆け出し</div>
+            </div>
+            <div class="luck-display">LUCK: <span id="stat-luck">---</span></div>
+        </div>
     </div>
 </div>
 
-
-<!-- 広告報酬モーダル -->
-<div id="ad-modal" class="modal">
-    <div class="modal-content">
-        <h3>📺 広告報酬</h3>
-        <p style="font-size:11px;color:#888;" id="ad-timer-label">動画を最後まで見ると報酬ゲット！</p>
-        <div id="ad-screen" style="background:#000;border:2px solid #0a0;border-radius:8px;padding:20px;margin:10px 0;min-height:80px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;">
-            <div id="ad-content" style="font-size:32px;">📺</div>
-            <div id="ad-progress-wrap" style="width:100%;background:#111;border-radius:4px;height:8px;display:none;">
-                <div id="ad-progress-bar" style="height:8px;background:#0a0;border-radius:4px;width:0%;transition:width 0.1s;"></div>
-            </div>
-            <div id="ad-countdown" style="font-size:13px;color:#0a0;font-weight:bold;"></div>
-        </div>
-        <div id="ad-reward-info" style="font-size:12px;color:#ff0;margin-bottom:8px;">報酬: $<span id="ad-reward-amount">0</span> + <span id="ad-reward-balls">0</span>玉</div>
-        <div id="ad-limit-info" style="font-size:10px;color:#666;margin-bottom:8px;">本日残り <span id="ad-remaining">0</span>回</div>
-        <button id="ad-watch-btn" class="styled-button" style="background:#0a0;color:#fff;width:100%;">▶ 視聴開始</button>
-        <button class="styled-button close-btn" id="btn-close-ad">閉じる</button>
-    </div>
-</div>
-<!-- 管理者モーダル -->
-<div id="admin-modal" class="modal">
-    <div class="modal-content admin-content">
-        <h3>🔧 管理者パネル</h3>
-        <div id="admin-auth-area">
-            <input type="password" id="admin-pw" class="styled-input" placeholder="管理者コード">
-            <button class="styled-button" id="btn-auth-admin" style="background:#fff;color:#000;width:100%;">認証</button>
-        </div>
-        <div id="admin-panel-ui" style="display:none; margin-top:10px;">
-            <!-- デバッグ -->
-            <div class="adm-section">
-                <div class="adm-section-title">🔧 デバッグ（自分のみ）</div>
-                <input type="number" id="adm-money" class="styled-input" placeholder="所持金を上書き">
-                <input type="number" id="adm-balls" class="styled-input" placeholder="玉数を上書き">
-                <button class="adm-btn" id="btn-adm-self" style="background:#555;color:#fff;">上書き</button>
-            </div>
-            <!-- 一斉配布 -->
-            <div class="adm-section">
-                <div class="adm-section-title">💰 一斉配布</div>
-                <input type="number" id="adm-dist-money" class="styled-input" placeholder="配布金額">
-                <input type="number" id="adm-dist-balls" class="styled-input" placeholder="配布玉数">
-                <button class="adm-btn" id="btn-adm-dist" style="background:#9400d3;color:#fff;">全員に配布</button>
-            </div>
-            <!-- ニュース -->
-            <div class="adm-section">
-                <div class="adm-section-title">📡 ニュース投稿</div>
-                <textarea id="adm-news-input" class="styled-input" placeholder="ニュース内容..." style="height:50px;resize:none;width:90%;"></textarea>
-                <div style="display:flex;gap:5px;">
-                    <button class="adm-btn" id="btn-adm-news" style="background:#0ff;color:#000;flex:1;">投稿</button>
-                    <button class="adm-btn" id="btn-adm-clear" style="background:#333;color:#fff;flex:0.5;">全消去</button>
-                </div>
-            </div>
-            <!-- 配当変更 -->
-            <div class="adm-section">
-                <div class="adm-section-title">🎰 配当変更</div>
-                <div class="adm-grid">
-                    <label>確変確率(%)<input type="number" id="adm-kakuhen-prob" value="45"></label>
-                    <label>通常確率(%)<input type="number" id="adm-normal-prob" value="8"></label>
-                    <label>銀→金確率(%)<input type="number" id="adm-gold-prob" value="30"></label>
-                    <label>銀換金額($)<input type="number" id="adm-silver-rate" value="500"></label>
-                    <label>金換金額($)<input type="number" id="adm-gold-rate" value="2000"></label>
-                </div>
-                <button class="adm-btn" id="btn-adm-payouts" style="background:#ffd700;color:#000;">全員に反映</button>
-            </div>
-            <!-- ラックマルチ -->
-            <div class="adm-section">
-                <div class="adm-section-title">🍀 ラックマルチ</div>
-                <input type="number" id="adm-luck-multi" value="1" step="0.1" min="0" class="styled-input" style="color:#a0f;font-size:16px;font-weight:bold;text-align:center;">
-                <button class="adm-btn" id="btn-adm-luck" style="background:#a0f;color:#fff;">全員に反映</button>
-            </div>
-            <!-- コミュニティイベント -->
-            <div class="adm-section">
-                <div class="adm-section-title">🏅 コミュニティイベント</div>
-                <input type="text" id="adm-event-title" class="styled-input" placeholder="イベント名">
-                <input type="number" id="adm-event-goal" class="styled-input" placeholder="目標金額 (例: 1000000)">
-                <input type="number" id="adm-event-bonus" class="styled-input" placeholder="達成ボーナス($)">
-                <div style="display:flex;gap:5px;">
-                    <button class="adm-btn" id="btn-adm-event-post" style="background:#f55;color:#fff;flex:1;">開始</button>
-                    <button class="adm-btn" id="btn-adm-event-clear" style="background:#333;color:#fff;flex:0.5;">終了</button>
-                </div>
-            </div>
-        </div>
-        <button class="styled-button close-btn" id="btn-close-admin">閉じる</button>
+<!-- ニュースバー (4パネルの下) -->
+<div id="news-bar">
+    <div id="news-dot"></div>
+    <div id="news-label">LIVE NEWS</div>
+    <div id="news-ticker-wrap">
+        <span id="news-ticker-text">SYSTEM ONLINE --- 本日も電脳チンチロをお楽しみください ---</span>
     </div>
 </div>
 
 <script>
-const firebaseConfig = {
-    apiKey: "AIzaSyA10j1O95LaPI_QrfqdalapIomXmzXRCms",
-    authDomain: "patinnko2.firebaseapp.com",
-    databaseURL: "https://patinnko2-default-rtdb.firebaseio.com",
-    projectId: "patinnko2",
-    storageBucket: "patinnko2.firebasestorage.app",
-    messagingSenderId: "1084492073320",
-    appId: "1:1084492073320:web:f6430e8a6fa1300c8c6edd"
-};
+    // 配当率グローバル変数
+    window.PAYOUT_PINZORO = 5;
+    window.PAYOUT_ZORO = 3;
+    window.PAYOUT_SHIGOZORO = 2;
+    window.PAYOUT_PAIR = 1.5;
+    window.LUCK_MULTI = 1;
+    window.newsMessages = [];
 
-let auth, db;
-let money, balls, inventory, ownedItems, equippedTool, activeSkin;
-let totalSpent, comboCount, totalShots, debt;
-let stock = 0, isSpinning = false, isKakuhen = false;
-let currentUser = null;
-let activeBalls = [], pegs = [];
-let adTimer = null;
+    // ニュースティッカー制御（全プレイヤーにリアルタイム反映）
+    window.startNewsTicker = () => {
+        const msgs = window.newsMessages;
+        const el = document.getElementById('news-ticker-text');
+        if (!el) return;
+        if (!msgs || msgs.length === 0) {
+            // メッセージなし → デフォルトに戻す
+            el.style.animation = 'none';
+            el.offsetHeight;
+            el.innerText = 'SYSTEM ONLINE --- 本日も電脳チンチロをお楽しみください ---';
+            el.style.animation = 'ticker-scroll 30s linear infinite';
+            return;
+        }
+        const combined = msgs.map(m => `◆ ${m.text}`).join('　　　　　');
+        el.innerText = combined + '　　　　　';
+        // アニメーションリセット（新メッセージを最初から流す）
+        el.style.animation = 'none';
+        el.offsetHeight; // reflow強制
+        const duration = Math.max(20, combined.length * 0.28);
+        el.style.animation = `ticker-scroll ${duration}s linear infinite`;
+    };
 
-let G = { kakuhenProb:0.45, normalProb:0.08, goldProb:0.30, silverRate:500, goldRate:2000, luckMulti:1 };
+    let money = 0, debt = 0, rolling = false, currentBet = 0, burstPower = 0, isFoul = false;
+    let totalGames = 0, totalWins = 0, totalEarned = 0;
+    let ownedItems = ['s-def'], equippedTool = null, equippedSkin = 's-def';
+    let clearedMissions = [], taxTimeLeft = 60;
+    let consecutiveWins = 0, hifumiCount = 0, tokuseiUsed = false;
+    let scene, camera, renderer, world, diceBodies = [], diceMeshes = [];
+    const SKINS = { 's-def': 0xffffff, 's-gold': 0xffd700, 's-cyber': 0xbc00ff, 's-prism': 0xc0c0c0, 's-glass': 'ice' };
 
-const ITEMS = {
-    tools: [
-        {id:'t-auto',    name:'🔫 自動連射機',   price:5000,      desc:'自動で連続発射'},
-        {id:'t-magnet',  name:'🧲 磁力チャッカー', price:50000,     desc:'キャッチャー幅2倍（紫色）'},
-        {id:'t-twin',    name:'⚔️ ツイン発射',   price:500000,    desc:'2発同時発射'},
-        {id:'t-triple',  name:'🔱 ストックMAX',  price:2000000,   desc:'ストック上限4→8に拡張'},
-        {id:'t-gravity', name:'🌌 重力崩壊',     price:10000000,  desc:'金景品の換金額が3倍'}
-    ],
-    skins: [
-        {id:'s-def',    name:'📱 標準',   price:0,         bg:'#000', pin:'#ddd'},
-        {id:'s-neon',   name:'🌈 ネオン',  price:100000,    bg:'#001', pin:'#0ff'},
-        {id:'s-gold',   name:'✨ 純金',   price:1000000,   bg:'#210', pin:'#ff0'},
-        {id:'s-ruby',   name:'🍎 紅蓮',   price:5000000,   bg:'#300', pin:'#f00'},
-        {id:'s-dia',    name:'💎 剛金',   price:20000000,  bg:'#112', pin:'#fff'},
-        {id:'s-galaxy', name:'🌌 銀河',   price:100000000, bg:'#001', pin:'#f0f'},
-        {id:'s-void',   name:'⬛ 無',     price:500000000, bg:'#000', pin:'#222'}
-    ],
-    loans: [
-        {id:'l-sm',  name:'⚡ 小口融資', amount:10000,    desc:'$10,000借入 / 利息10%/ログイン'},
-        {id:'l-md',  name:'💵 中口融資', amount:100000,   desc:'$100,000借入 / 利息10%/ログイン'},
-        {id:'l-lg',  name:'💰 大口融資', amount:1000000,  desc:'$1,000,000借入 / 利息10%/ログイン'},
-        {id:'l-vip', name:'👑 VIP融資',  amount:10000000, desc:'$10,000,000借入 / 利息10%/ログイン'},
-    ]
-};
-
-const MISSIONS = [
-    {id:'m01', n:'初打ち: 100発',           c:()=>totalShots>=100,       rm:500,     rb:20},
-    {id:'m02', n:'修行中: 1,000発',          c:()=>totalShots>=1000,      rm:2000,    rb:100},
-    {id:'m03', n:'廃人: 10,000発',           c:()=>totalShots>=10000,     rm:10000,   rb:500},
-    {id:'m04', n:'伝説: 100,000発',          c:()=>totalShots>=100000,    rm:100000,  rb:2000},
-    {id:'m05', n:'小金持ち: $10万',           c:()=>money>=100000,         rm:5000,    rb:50},
-    {id:'m06', n:'富豪: $100万',             c:()=>money>=1000000,        rm:50000,   rb:200},
-    {id:'m07', n:'億万長者: $1億',            c:()=>money>=100000000,      rm:500000,  rb:1000},
-    {id:'m08', n:'神: $10億',               c:()=>money>=1000000000,     rm:5000000, rb:5000},
-    {id:'m09', n:'連チャン: 3連',             c:()=>comboCount>=3,         rm:1000,    rb:30},
-    {id:'m10', n:'連チャン: 5連',             c:()=>comboCount>=5,         rm:3000,    rb:80},
-    {id:'m11', n:'神業: 15連',              c:()=>comboCount>=15,        rm:30000,   rb:300},
-    {id:'m12', n:'超神業: 30連',             c:()=>comboCount>=30,        rm:200000,  rb:1000},
-    {id:'m13', n:'浪費家: $1万消費',          c:()=>totalSpent>=10000,     rm:2000,    rb:50},
-    {id:'m14', n:'大浪費: $100万消費',        c:()=>totalSpent>=1000000,   rm:20000,   rb:200},
-    {id:'m15', n:'破産寸前: $1億消費',        c:()=>totalSpent>=100000000, rm:500000,  rb:2000},
-    {id:'m16', n:'自動連射機を購入',           c:()=>ownedItems.includes('t-auto'),    rm:3000,   rb:100},
-    {id:'m17', n:'磁力チャッカー購入',          c:()=>ownedItems.includes('t-magnet'),  rm:10000,  rb:200},
-    {id:'m18', n:'重力崩壊を購入',            c:()=>ownedItems.includes('t-gravity'), rm:100000, rb:500},
-    {id:'m19', n:'コレクター: スキン3種所持',   c:()=>ownedItems.filter(i=>i.startsWith('s-')).length>=3, rm:20000,   rb:300},
-    {id:'m20', n:'究極コレクター: 全スキン所持', c:()=>ownedItems.filter(i=>i.startsWith('s-')).length>=7, rm:1000000, rb:2000},
-];
-
-const AD_CONFIG = [
-    {reward_money:100,   reward_balls:5,  duration:15},
-    {reward_money:300,   reward_balls:10, duration:20},
-    {reward_money:1000,  reward_balls:20, duration:25},
-    {reward_money:10000, reward_balls:50, duration:30},
-];
-const AD_DAILY_LIMIT = 5;
-const AD_EMOJIS = ['🚀','💊','🏖️','🎮','🍕','⚽','🎸','🌈','🦁','💡'];
-const outHoles = [{x:10,y:230,w:60,h:10},{x:230,y:230,w:60,h:10}];
-
-// ===== toast（最初に定義） =====
-function toast(msg, color='#0ff', dur=2000) {
-    const t = document.createElement('div');
-    t.innerText = msg;
-    t.style.cssText = `position:fixed;top:15%;left:50%;transform:translateX(-50%);background:#111;border:2px solid ${color};color:${color};padding:10px 20px;border-radius:10px;font-weight:bold;z-index:9999;font-size:13px;pointer-events:none;white-space:nowrap;`;
-    document.body.appendChild(t);
-    setTimeout(() => t.remove(), dur);
-}
-
-function initData(reset=false) {
-    if (reset) {
-        money=1000; balls=100; debt=0;
-        inventory={bronze:0,silver:0,gold:0};
-        ownedItems=['s-def']; activeSkin='s-def'; equippedTool=null;
-        totalSpent=0; comboCount=0; totalShots=0;
-        localStorage.clear();
-    } else {
-        money     = parseInt(localStorage.getItem('p_money'))  || 1000;
-        balls     = parseInt(localStorage.getItem('p_balls'))  || 100;
-        debt      = parseInt(localStorage.getItem('p_debt'))   || 0;
-        inventory = JSON.parse(localStorage.getItem('p_prizes') || '{"bronze":0,"silver":0,"gold":0}');
-        ownedItems  = JSON.parse(localStorage.getItem('p_owned') || '["s-def"]');
-        activeSkin  = localStorage.getItem('p_skin') || 's-def';
-        equippedTool= localStorage.getItem('p_tool') || null;
-        totalSpent  = parseInt(localStorage.getItem('p_spent')) || 0;
-        comboCount  = parseInt(localStorage.getItem('p_combo')) || 0;
-        totalShots  = parseInt(localStorage.getItem('p_shots')) || 0;
+    function triggerAccident() {
+        const log = document.getElementById('accident-log');
+        log.innerText = "";
+        if (Math.random() > 0.15) return;
+        const type = Math.floor(Math.random() * 3);
+        switch(type) {
+            case 0:
+                log.innerText = "⚠️ WARNING: HIGH WIND";
+                diceBodies.forEach(b => b.applyImpulse(new CANNON.Vec3(Math.random()*5-2.5, 0, 0), b.position));
+                break;
+            case 1:
+                log.innerText = "⚠️ WARNING: GRAVITY ERROR";
+                world.gravity.set(0, -10 - Math.random()*60, 0);
+                setTimeout(() => world.gravity.set(0, -45, 0), 3000);
+                break;
+            case 2:
+                log.innerText = "⚠️ WARNING: MAGNETIC STORM";
+                window.isMagneticStorm = true;
+                break;
+        }
     }
-    stock=0; isSpinning=false; isKakuhen=false;
-}
 
-function saveData() {
-    localStorage.setItem('p_money',  money);
-    localStorage.setItem('p_balls',  balls);
-    localStorage.setItem('p_debt',   debt);
-    localStorage.setItem('p_prizes', JSON.stringify(inventory));
-    localStorage.setItem('p_owned',  JSON.stringify(ownedItems));
-    localStorage.setItem('p_skin',   activeSkin);
-    localStorage.setItem('p_tool',   equippedTool || '');
-    localStorage.setItem('p_spent',  totalSpent);
-    localStorage.setItem('p_combo',  comboCount);
-    localStorage.setItem('p_shots',  totalShots);
-    if (currentUser) db.ref('users/' + currentUser.uid).set({name: currentUser.displayName, money});
-}
+    function init() {
+        scene = new THREE.Scene();
+        camera = new THREE.PerspectiveCamera(40, 1, 0.1, 100);
+        camera.position.set(0, 12, 0); camera.lookAt(0,0,0);
+        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+        renderer.setSize(220, 220);
+        document.getElementById('canvas-wrap').appendChild(renderer.domElement);
+        scene.add(new THREE.AmbientLight(0xffffff, 1.2));
+        world = new CANNON.World(); world.gravity.set(0, -45, 0);
+        const diceMat = new CANNON.Material(); const bowlMat = new CANNON.Material();
+        world.addContactMaterial(new CANNON.ContactMaterial(diceMat, bowlMat, { friction: 0.1, restitution: 0.5 }));
+        const ground = new CANNON.Body({ mass: 0, material: bowlMat });
+        ground.addShape(new CANNON.Plane()); ground.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0), -Math.PI/2);
+        world.addBody(ground);
+        const segments = 32, radius = 3.6;
+        for(let i=0; i<segments; i++) {
+            const angle = (i/segments) * Math.PI * 2;
+            const wall = new CANNON.Body({ mass: 0, material: bowlMat });
+            wall.addShape(new CANNON.Box(new CANNON.Vec3(1.3, 1.0, 1)));
+            wall.position.set(Math.cos(angle)*radius, 0.5, Math.sin(angle)*radius);
+            wall.quaternion.setFromAxisAngle(new CANNON.Vec3(0,1,0), -angle);
+            world.addBody(wall);
+        }
+        const size = 0.6;
+        for(let i=0; i<3; i++) {
+            const body = new CANNON.Body({ mass: 1, material: diceMat });
+            body.addShape(new CANNON.Box(new CANNON.Vec3(size/2, size/2, size/2)));
+            body.position.set(0, -10, 0); world.addBody(body); diceBodies.push(body);
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(size, size, size), createDiceMat(0xffffff, false));
+            scene.add(mesh); diceMeshes.push(mesh);
+        }
+        setInterval(updateTax, 1000);
+    }
 
-function updateUI() {
-    document.getElementById('money-display').innerText = money.toLocaleString();
-    document.getElementById('balls-display').innerText = balls;
-    document.getElementById('combo-count').innerText   = comboCount;
-    const stockMax = equippedTool==='t-triple' ? 8 : 4;
-    document.getElementById('stock-lamps').innerText   = '●'.repeat(stock) + '○'.repeat(stockMax - stock);
-    document.getElementById('luck-multi-display').innerText = `LUCK x${G.luckMulti}`;
-    document.getElementById('kakuhen-lamp').innerText  = isKakuhen ? '🔥 確変中 🔥' : '通常';
-    document.getElementById('pachinko-machine').className = isKakuhen ? 'kakuhen-mode' : '';
-    document.getElementById('p-bronze').innerText = inventory.bronze;
-    document.getElementById('p-silver').innerText = inventory.silver;
-    document.getElementById('p-gold').innerText   = inventory.gold;
-    const panel = document.getElementById('debt-panel');
-    document.getElementById('debt-panel-amount').innerText = '$' + (debt||0).toLocaleString();
-    panel.className = debt > 0 ? 'in-debt' : '';
-    renderShop('shop-tools', ITEMS.tools, 't');
-    renderShop('shop-skins', ITEMS.skins, 's');
-    renderLoans();
-    renderMissions();
-    renderStats();
-    saveData();
-}
-
-function renderStats() {
-    const el = document.getElementById('stats-panel');
-    if (!el) return;
-    el.innerHTML = `
-        <div>🎯 総発射数: <b>${(totalShots||0).toLocaleString()}発</b></div>
-        <div>💸 総消費額: <b>$${(totalSpent||0).toLocaleString()}</b></div>
-        <div>🔥 最高連チャン: <b>${(comboCount||0)}連</b></div>
-        <div>💰 所持金: <b>$${(money||0).toLocaleString()}</b></div>
-        <div>💀 借金: <b style="color:${debt>0?'#f44':'#0f0'}">$${(debt||0).toLocaleString()}</b></div>
-    `;
-}
-
-function renderShop(targetId, list, type) {
-    document.getElementById(targetId).innerHTML = list.map(item => {
-        const owned   = ownedItems.includes(item.id);
-        const equipped= (type==='t' && equippedTool===item.id) || (type==='s' && activeSkin===item.id);
-        return `<div class="shop-item ${equipped?'equipped':''}" data-action="item" data-id="${item.id}" data-price="${item.price}" data-type="${type}">
-            <div><div>${item.name}</div>${item.desc?`<div class="shop-item-desc">${item.desc}</div>`:''}</div>
-            <span>${owned?(equipped?'装備中':'所有'):'$'+item.price.toLocaleString()}</span>
-        </div>`;
-    }).join('');
-}
-
-function renderLoans() {
-    document.getElementById('shop-loans').innerHTML = ITEMS.loans.map(l =>
-        `<div class="shop-item" data-action="loan" data-id="${l.id}">
-            <div><div>${l.name}</div><div class="shop-item-desc">${l.desc}</div></div>
-            <span style="color:#f90;">借りる</span>
-        </div>`
-    ).join('');
-}
-
-function renderMissions() {
-    const claimed = JSON.parse(localStorage.getItem('p_m_claimed') || '[]');
-    document.getElementById('mission-list').innerHTML = MISSIONS.map(m => {
-        const done     = claimed.includes(m.id);
-        const achieved = m.c();
-        const claimable= achieved && !done;
-        const cls  = done ? 'done' : (claimable ? 'claimable' : '');
-        const icon = done ? '✅' : (claimable ? '🎁' : '❌');
-        return `<div class="mission-item ${cls}">
-            <span>${icon} ${m.n}</span>
-            <span class="mission-reward">$${m.rm.toLocaleString()} + ${m.rb}玉</span>
-            ${claimable?`<button class="claim-btn" data-action="claim" data-id="${m.id}" data-rm="${m.rm}" data-rb="${m.rb}">受け取る</button>`:''}
-        </div>`;
-    }).join('');
-}
-
-function updateRanking() {
-    db.ref('users').on('value', snap => {
-        const arr = [];
-        snap.forEach(s => { const v=s.val(); if(v&&v.name&&v.money!==undefined) arr.push(v); });
-        arr.sort((a,b) => b.money - a.money);
-        document.getElementById('ranking-list').innerHTML = arr.slice(0,5).map((u,i) =>
-            `<div class="rank-item"><span>${['🥇','🥈','🥉','4️⃣','5️⃣'][i]} ${u.name}</span><span>$${u.money.toLocaleString()}</span></div>`
-        ).join('') || '<div style="color:#555;padding:4px;">データなし</div>';
-    });
-}
-
-function listenGifts() {
-    db.ref('gifts/' + currentUser.uid).on('value', snap => {
-        const list = document.getElementById('gift-list');
-        list.innerHTML = '';
-        let count = 0;
-        snap.forEach(g => {
-            const d = g.val();
-            if (!d) return;
-            count++;
-            const btn = document.createElement('button');
-            btn.className = 'styled-button buy-btn';
-            btn.style.marginBottom = '8px';
-            btn.innerText = `🎁 $${(d.money||0).toLocaleString()} + ${d.balls||0}玉`;
-            btn.onclick = () => {
-                money += (d.money||0); balls += (d.balls||0);
-                db.ref('gifts/'+currentUser.uid+'/'+g.key).remove();
-                toast(`🎁 受け取った！ +$${(d.money||0).toLocaleString()} +${d.balls||0}玉`, '#9400d3', 2500);
-                updateUI();
+    function createDiceMat(color, isNeon) {
+        const mats = [], faceValues = [3, 4, 1, 6, 5, 2];
+        for (let val of faceValues) {
+            const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#' + new THREE.Color(color).getHexString(); ctx.fillRect(0,0,128,128);
+            ctx.fillStyle = (val===1)?"#f00":"#000";
+            const dot = (x,y) => {
+                ctx.beginPath(); ctx.arc(x,y,18,0,Math.PI*2);
+                ctx.fillStyle = 'rgba(255,255,255,0.9)'; ctx.fill();
+                ctx.beginPath(); ctx.arc(x,y,13,0,Math.PI*2);
+                ctx.fillStyle = (val===1)?"#f00":"#111"; ctx.fill();
             };
-            list.appendChild(btn);
-        });
-        if (count===0) list.innerHTML = '<div style="color:#555;font-size:12px;padding:8px;">ギフトなし</div>';
-        else toast(`🎁 ギフトが${count}件届いてるぞ！`, '#9400d3', 2500);
-    });
-}
-
-function updateTicker(msgs) {
-    const el = document.getElementById('news-ticker-text');
-    if (!el) return;
-    const text = msgs.length > 0
-        ? msgs.map(m=>`◆ ${m.text}`).join('　　　　　') + '　　　　　'
-        : 'SYSTEM ONLINE --- 超インフレ・パチンコへようこそ ---';
-    el.innerText = text;
-    el.style.animation = 'none';
-    el.offsetHeight;
-    el.style.animation = `ticker-scroll ${Math.max(20, text.length*0.28)}s linear infinite`;
-}
-
-function setupCanvas() {
-    pegs = [];
-    for (let y=60; y<=210; y+=30) {
-        const off = (Math.floor(y/30)%2===0) ? 15 : 0;
-        for (let x=30; x<280; x+=30) pegs.push({x:x+off, y, type:'pin'});
+            if(val===1) dot(64,64); else if(val===2){ dot(30,30); dot(98,98); } else if(val===3){ dot(30,30); dot(64,64); dot(98,98); } else if(val===4){ dot(30,30); dot(98,30); dot(30,98); dot(98,98); } else if(val===5){ dot(30,30); dot(98,30); dot(64,64); dot(30,98); dot(98,98); } else if(val===6){ dot(30,30); dot(98,30); dot(30,64); dot(98,64); dot(30,98); dot(98,98); }
+            mats.push(new THREE.MeshPhongMaterial({ map: new THREE.CanvasTexture(canvas), emissive: isNeon?color:0, emissiveIntensity: 0.5 }));
+        } return mats;
     }
-    const addRail = (x1,y1,x2,y2) => {
-        const dist = Math.sqrt((x2-x1)**2+(y2-y1)**2);
-        for (let i=0; i<dist; i+=4) pegs.push({x:x1+(x2-x1)*(i/dist), y:y1+(y2-y1)*(i/dist), type:'rail'});
-    };
-    addRail(0,260,110,315); addRail(300,260,190,315);
-    document.getElementById('shootBtn').onclick = () => {
-        if (balls<=0) return;
-        const cnt = equippedTool==='t-twin' ? 2 : 1;
-        for (let i=0; i<cnt; i++) {
-            if (balls>0) { balls--; totalShots++; activeBalls.push({x:150+(Math.random()-0.5)*20, y:-10, vx:(Math.random()-0.5)*2, vy:2}); }
+
+    function updateTax() {
+        if(debt <= 0) return; taxTimeLeft--;
+        if(taxTimeLeft <= 0) {
+            const tax = Math.max(1, Math.floor(debt * 0.01));
+            if(money >= tax) money -= tax; else { debt += (tax - money); money = 0; }
+            taxTimeLeft = 60; saveData(); updateUI();
         }
-        updateUI();
-    };
-    setInterval(() => { if(equippedTool==='t-auto' && balls>0) document.getElementById('shootBtn').click(); }, 400);
-}
+        document.getElementById('tax-timer').innerText = `徴収まで: ${taxTimeLeft}s`;
+    }
 
-function draw() {
-    const canvas = document.getElementById('pachinkoCanvas');
-    const ctx = canvas.getContext('2d');
-    const skin = ITEMS.skins.find(s=>s.id===activeSkin) || ITEMS.skins[0];
-    ctx.fillStyle = skin.bg; ctx.fillRect(0,0,300,340);
-    outHoles.forEach(h => { ctx.fillStyle='#300'; ctx.fillRect(h.x,h.y,h.w,h.h); });
-    pegs.forEach(p => {
-        ctx.fillStyle = p.type==='rail' ? '#444' : skin.pin;
-        ctx.beginPath(); ctx.arc(p.x,p.y,p.type==='rail'?1.2:2,0,7); ctx.fill();
-    });
-    const catcherW = equippedTool==='t-magnet' ? 60 : 30;
-    const cX = 135 + Math.sin(Date.now()/500)*60;
-    ctx.strokeStyle = equippedTool==='t-magnet' ? '#f0f' : '#0ff';
-    ctx.strokeRect(cX,315,catcherW,15);
-    for (let i=0; i<activeBalls.length; i++) {
-        let b = activeBalls[i];
-        b.vy += 0.22; b.x += b.vx; b.y += b.vy;
-        pegs.forEach(p => {
-            const dx=b.x-p.x, dy=b.y-p.y, d=Math.sqrt(dx*dx+dy*dy);
-            if (d<7) { const a=Math.atan2(dy,dx); b.vx=Math.cos(a)*1.8; b.vy=Math.sin(a)*1.8; }
+    window.rollDice = () => {
+        if(rolling) return;
+        currentBet = parseInt(document.getElementById('betInput').value);
+        if(currentBet > money || currentBet <= 0) return alert("金がねえ！");
+        money -= currentBet; rolling = true; isFoul = false; burstPower = 0;
+        window.isMagneticStorm = false;
+        totalGames++;
+        document.getElementById('msg').innerText = "ROLL!!"; updateUI();
+        diceBodies.forEach((b) => {
+            b.mass = (equippedTool === 't-heavy') ? 3 : 1; b.updateMassProperties();
+            b.position.set((Math.random() - 0.5) * 2, 7, (Math.random() - 0.5) * 2);
+            b.velocity.set(0, -18, 0); b.angularVelocity.set(Math.random()*50, Math.random()*50, Math.random()*50);
         });
-        outHoles.forEach(h => { if(b.x>h.x&&b.x<h.x+h.w&&b.y>h.y&&b.y<h.y+h.h){activeBalls.splice(i,1);i--;} });
-        if (b && b.y>315 && b.x>cX && b.x<cX+catcherW) {
-            activeBalls.splice(i,1); i--;
-            const stockMax = equippedTool==='t-triple' ? 8 : 4;
-            if (stock<stockMax) { stock++; updateUI(); startSlot(); }
-        } else if (b && b.y>350) { activeBalls.splice(i,1); i--; }
-        if (b) { ctx.fillStyle='#fff'; ctx.beginPath(); ctx.arc(b.x,b.y,4,0,7); ctx.fill(); }
-    }
-    requestAnimationFrame(draw);
-}
+        triggerAccident();
+        // タイマーではなく静止検知で判定
+        waitForDiceStop();
+    };
 
-function startSlot() {
-    if (isSpinning) return;
-    isSpinning = true;
-    let count = 0;
-    const syms = ['🎰','💰','💎','🍒','7️⃣'];
-    const timer = setInterval(() => {
-        ['s1','s2','s3'].forEach(id => document.getElementById(id).innerText = syms[Math.floor(Math.random()*5)]);
-        if (++count > 12) { clearInterval(timer); checkWin(); }
-    }, 80);
-}
+    function waitForDiceStop() {
+        const STOP_THRESHOLD = 0.08;   // 速度がこれ以下で「止まった」とみなす
+        const STABLE_FRAMES  = 30;     // 連続して静止を確認するフレーム数（約0.5秒）
+        const TIMEOUT_MS     = 8000;   // 最大待機時間（無限ループ防止）
+        let stableCount = 0;
+        const startTime = performance.now();
 
-function checkWin() {
-    const prob = isKakuhen ? G.kakuhenProb : G.normalProb;
-    if (Math.random() < prob) {
-        if (Math.random() < G.goldProb) {
-            applyLuckBonus(G.goldRate);
-            inventory.gold++; isKakuhen=true; comboCount++;
-        } else {
-            applyLuckBonus(G.silverRate);
-            inventory.silver++; isKakuhen=false; comboCount=0;
+        function check() {
+            if (!rolling) return; // FOULなどで既にキャンセル済み
+
+            // タイムアウト保険
+            if (performance.now() - startTime > TIMEOUT_MS) {
+                judge(); return;
+            }
+
+            const allStopped = diceBodies.every(b => {
+                const v = b.velocity;
+                const av = b.angularVelocity;
+                const linSpeed = Math.sqrt(v.x**2 + v.y**2 + v.z**2);
+                const angSpeed = Math.sqrt(av.x**2 + av.y**2 + av.z**2);
+                return linSpeed < STOP_THRESHOLD && angSpeed < STOP_THRESHOLD;
+            });
+
+            if (allStopped) {
+                stableCount++;
+                if (stableCount >= STABLE_FRAMES) { judge(); return; }
+            } else {
+                stableCount = 0;
+            }
+            requestAnimationFrame(check);
         }
-    } else if (document.getElementById('s1').innerText === document.getElementById('s2').innerText) {
-        inventory.bronze++;
-    } else {
-        comboCount = 0;
+        requestAnimationFrame(check);
     }
-    isSpinning=false; stock--; updateUI();
-    if (stock>0) setTimeout(startSlot, 300);
-}
 
-function applyLuckBonus(base) {
-    const LM = G.luckMulti;
-    if (LM===1) return base;
-    if (LM>1) {
-        const chance = Math.min((LM-1)*0.1, 1.0);
-        if (Math.random()<chance) { toast(`⭐ LUCK BONUS x2!`,'#a0f'); return Math.floor(base*2); }
-    } else if (LM<1) {
-        if (Math.random()<1-LM) { toast(`💀 BAD LUCK x${LM}`,'#f44'); return Math.floor(base*LM); }
-    }
-    return base;
-}
+    // ラックマルチ: 勝利時に確率で配当ボーナス
+    // LM=2→10%, LM=3→20% ... LM=10→80%, LM=11→確定+10%追加, LM=12→確定+20%追加...
+    // LM<1 → 逆に配当が下がる確率アップ (LM=0.9→10%, LM=0.5→50%)
+    function applyLuckBonus(baseMult) {
+        const LM = window.LUCK_MULTI || 1;
+        if(LM === 1) return baseMult;
 
-function buyBalls() {
-    if (money<150) return;
-    money-=150; totalSpent+=150; balls+=50; updateUI();
-}
+        const log = document.getElementById('accident-log');
 
-function exchangeSingle(type) {
-    const goldMult = equippedTool==='t-gravity' ? 3 : 1;
-    const rate = type==='gold' ? G.goldRate*goldMult : type==='silver' ? G.silverRate : 100;
-    if (inventory[type]<=0) return;
-    const earned = inventory[type] * rate;
-    money += earned;
-    inventory[type] = 0;
-    // イベント進捗に加算
-    db.ref('system/event').once('value', snap => {
-        const d = snap.val();
-        if (d && d.title && d.current < d.goal) {
-            const newVal = (d.current || 0) + earned;
-            db.ref('system/event/current').set(newVal);
-            // 目標達成チェック
-            if (newVal >= d.goal && d.bonus > 0) {
-                // 全員にボーナス配布
-                db.ref('users').once('value', usnap => {
-                    usnap.forEach(u => db.ref('gifts/' + u.key).push({money: d.bonus, balls: 0}));
-                });
-                toast(`🏆 イベント目標達成！全員に$${parseInt(d.bonus).toLocaleString()}配布！`, '#ff0', 5000);
+        if(LM > 1) {
+            if(LM <= 10) {
+                // LM=2→10%, LM=3→20%, ..., LM=10→80%
+                const chance = (LM - 1) * 0.1;
+                if(Math.random() < chance) {
+                    log.innerText = `⭐ LUCK BONUS x${LM}!`;
+                    setTimeout(() => { log.innerText = ''; }, 2000);
+                    return baseMult * LM;
+                }
+            } else {
+                // LM=11以上: 1回目は確定ボーナス、さらに(LM-10)*10%の確率で2回目ボーナス
+                let result = baseMult * LM;
+                log.innerText = `⭐ LUCK BONUS x${LM}!`;
+                const extraChance = (LM - 10) * 0.1;
+                if(Math.random() < extraChance) {
+                    result = result * LM;
+                    log.innerText = `🌟 DOUBLE LUCK!! x${LM}x${LM}!`;
+                }
+                setTimeout(() => { log.innerText = ''; }, 2500);
+                return result;
+            }
+        } else if(LM < 1) {
+            // LM<1: (1-LM)*100% の確率で配当がLM倍に減少
+            // 例: LM=0.9→10%, LM=0.5→50%, LM=0.1→90%
+            const chance = 1 - LM;
+            if(Math.random() < chance) {
+                log.innerText = `💀 BAD LUCK x${LM}`;
+                setTimeout(() => { log.innerText = ''; }, 2000);
+                return baseMult * LM;
             }
         }
-    });
-    updateUI();
-}
-
-function itemAction(id, price, type) {
-    if (!ownedItems.includes(id)) {
-        if (money<price) return;
-        money-=price; ownedItems.push(id);
-    } else {
-        if (type==='t') equippedTool = equippedTool===id ? null : id;
-        if (type==='s') activeSkin = id;
+        return baseMult;
     }
-    updateUI();
-}
 
-function claimMission(id, rm, rb) {
-    const claimed = JSON.parse(localStorage.getItem('p_m_claimed') || '[]');
-    if (claimed.includes(id)) return;
-    claimed.push(id);
-    localStorage.setItem('p_m_claimed', JSON.stringify(claimed));
-    money+=rm; balls+=rb;
-    toast(`🎁 $${rm.toLocaleString()} + ${rb}玉 GET!`, '#0f0');
-    updateUI();
-}
+    function judge() {
+        if(!rolling) return;
+        rolling = false;
+        document.getElementById('accident-log').innerText = "";
 
-function takeLoan(id) {
-    const l = ITEMS.loans.find(x=>x.id===id);
-    if (!l) return;
-    if (!confirm(`${l.name}\n借入額: $${l.amount.toLocaleString()}\n利息: ログインのたびに10%加算\n\n借りますか？`)) return;
-    money+=l.amount; debt+=l.amount;
-    toast(`💸 $${l.amount.toLocaleString()} 借入完了！`, '#f90');
-    updateUI();
-}
+        let out = diceBodies.some(b => {
+            const dist = Math.sqrt(b.position.x**2 + b.position.z**2);
+            return dist > 3.5 || b.position.y < 0.1;
+        });
+        if(out || isFoul) { document.getElementById('msg').innerText = out ? "場外没収" : "FOUL!!"; consecutiveWins = 0; saveData(); updateUI(); return; }
 
-function takeCustomLoan() {
-    const amt = parseInt(document.getElementById('loan-input').value);
-    if (isNaN(amt)||amt<=0) return alert('金額を入力してくれ');
-    if (!confirm(`$${amt.toLocaleString()} 借りますか？\n利息: ログインのたびに10%加算`)) return;
-    money+=amt; debt+=amt;
-    document.getElementById('loan-input').value = '';
-    toast(`💸 $${amt.toLocaleString()} 借入完了！`, '#f90');
-    updateUI();
-}
+        let res = diceBodies.map(b => getUpwardFace(b)).sort((a,b)=>a-b);
+        if(window.isMagneticStorm) res = res.map(() => Math.floor(Math.random()*6)+1).sort((a,b)=>a-b);
+        if(equippedTool === 't-mag' && Math.random() < 0.2) res = [1,1,1];
 
-function repayDebt(all=false) {
-    if (debt<=0) return;
-    const amt = all ? debt : parseInt(document.getElementById('loan-input').value);
-    if (!all && (isNaN(amt)||amt<=0)) return alert('返済額を入力してくれ');
-    if (money<amt) return alert('所持金が足りない！');
-    const actual = Math.min(amt, debt);
-    money-=actual; debt-=actual;
-    toast(`✅ $${actual.toLocaleString()} 返済！ 残債: $${debt.toLocaleString()}`, '#0f0', 2500);
-    updateUI();
-}
+        const P_PINZORO   = window.PAYOUT_PINZORO   || 5;
+        const P_ZORO      = window.PAYOUT_ZORO      || 3;
+        const P_SHIGOZORO = window.PAYOUT_SHIGOZORO || 2;
+        const P_PAIR      = window.PAYOUT_PAIR      || 1.5;
 
-function softReset() {
-    if (!confirm('全リセットするぜ？')) return;
-    initData(true); updateUI();
-}
-
-function getAdData() {
-    const today = new Date().toDateString();
-    const raw = JSON.parse(localStorage.getItem('p_ad_data') || '{}');
-    if (raw.date!==today) return {date:today, count:0};
-    return raw;
-}
-
-function watchAd() {
-    const adData = getAdData();
-    const remaining = AD_DAILY_LIMIT - adData.count;
-    const tier = Math.min(adData.count, AD_CONFIG.length-1);
-    const cfg = AD_CONFIG[tier];
-    document.getElementById('ad-reward-amount').innerText = cfg.reward_money.toLocaleString();
-    document.getElementById('ad-reward-balls').innerText  = cfg.reward_balls;
-    document.getElementById('ad-remaining').innerText     = remaining;
-    document.getElementById('ad-countdown').innerText     = '';
-    document.getElementById('ad-progress-wrap').style.display = 'none';
-    document.getElementById('ad-progress-bar').style.width    = '0%';
-    document.getElementById('ad-watch-btn').disabled = remaining<=0;
-    document.getElementById('ad-watch-btn').innerText = remaining>0 ? '▶ 視聴開始' : '本日の上限に達した';
-    document.getElementById('ad-timer-label').innerText = remaining>0 ? `動画を最後まで見ると報酬ゲット！（${cfg.duration}秒）` : '明日また見てね！';
-    document.getElementById('ad-content').innerText = '📺';
-    document.getElementById('ad-modal').style.display = 'flex';
-}
-
-function startAdWatch() {
-    const adData = getAdData();
-    if (AD_DAILY_LIMIT - adData.count <= 0) return;
-    const tier = Math.min(adData.count, AD_CONFIG.length-1);
-    const cfg = AD_CONFIG[tier];
-    document.getElementById('ad-watch-btn').disabled = true;
-    document.getElementById('ad-progress-wrap').style.display = 'block';
-    let elapsed = 0;
-    adTimer = setInterval(() => {
-        elapsed++;
-        document.getElementById('ad-progress-bar').style.width = (elapsed/cfg.duration*100) + '%';
-        document.getElementById('ad-countdown').innerText = `残り ${cfg.duration-elapsed}秒`;
-        document.getElementById('ad-content').innerText = AD_EMOJIS[elapsed % AD_EMOJIS.length];
-        if (elapsed >= cfg.duration) {
-            clearInterval(adTimer);
-            money+=cfg.reward_money; balls+=cfg.reward_balls;
-            adData.count++;
-            localStorage.setItem('p_ad_data', JSON.stringify(adData));
-            document.getElementById('ad-content').innerText = '🎉';
-            document.getElementById('ad-countdown').innerText = '視聴完了！';
-            toast(`📺 広告報酬！ +$${cfg.reward_money.toLocaleString()} +${cfg.reward_balls}玉`, '#0a0', 3000);
-            updateUI();
-            setTimeout(() => closeAdModal(), 1500);
+        let mult = 0;
+        if(res[0]===res[1] && res[1]===res[2]) {
+            mult = applyLuckBonus(res[0]===1 ? P_PINZORO : P_ZORO);
+            totalWins++; consecutiveWins++;
+            checkMission(1);
+            if(res[0]===1) checkMission(3);
+        } else if(res[0]===4 && res[1]===5 && res[2]===6) {
+            mult = applyLuckBonus(P_SHIGOZORO);
+            totalWins++; consecutiveWins++;
+            checkMission(17);
+        } else if(res[0]===1 && res[1]===2 && res[2]===3) {
+            mult = -1;
+            consecutiveWins = 0;
+            hifumiCount++;
+            if(hifumiCount >= 3) checkMission(28);
+        } else if(res[0]===res[1] || res[1]===res[2]) {
+            mult = applyLuckBonus(P_PAIR);
+            totalWins++; consecutiveWins++;
+        } else {
+            consecutiveWins = 0;
         }
-    }, 1000);
-}
 
-function closeAdModal() {
-    if (adTimer) { clearInterval(adTimer); adTimer=null; }
-    document.getElementById('ad-modal').style.display = 'none';
-}
+        if(mult === -1) { money -= currentBet; document.getElementById('msg').innerText = "ヒフミ..."; }
+        else if(mult > 0) {
+            const winAmt = Math.floor(currentBet * mult);
+            money += winAmt; totalEarned += winAmt;
+            document.getElementById('msg').innerText = `当たり x${mult.toFixed(1)}!`;
+        } else { document.getElementById('msg').innerText = "目なし"; }
 
-function openModal(id) {
-    if (id==='admin-modal') {
-        document.getElementById('admin-auth-area').style.display = 'block';
-        document.getElementById('admin-panel-ui').style.display  = 'none';
-        document.getElementById('admin-pw').value = '';
+        // 連勝ミッション
+        if(consecutiveWins >= 3) checkMission(18);
+        if(consecutiveWins >= 5) checkMission(19);
+
+        // プレイ回数
+        if(totalGames >= 10) checkMission(6);
+        if(totalGames >= 50) checkMission(7);
+        if(totalGames >= 100) checkMission(14);
+        if(totalGames >= 200) checkMission(21);
+        if(totalGames >= 500) checkMission(22);
+
+        // 累計獲得
+        if(totalEarned >= 100000) checkMission(9);
+        if(totalEarned >= 1000000) checkMission(16);
+        if(totalEarned >= 10000000) checkMission(13);
+        if(totalEarned >= 50000000) checkMission(23);
+        if(totalEarned >= 100000000) checkMission(30);
+
+        // 所持金
+        if(money >= 10000) checkMission(2);
+        if(money >= 1000000) checkMission(10);
+        if(money >= 5000000) checkMission(24);
+
+        // 借金
+        if(debt >= 100000) checkMission(25);
+
+        // 勝率(20戦以上・60%以上)
+        if(totalGames >= 20 && (totalWins / totalGames) >= 0.6) checkMission(29);
+
+        saveData(); updateUI();
     }
-    document.getElementById(id).style.display = 'flex';
-}
+    function getUpwardFace(body) {
+        const faces = [{v: new THREE.Vector3(0,1,0), val: 1}, {v: new THREE.Vector3(0,-1,0), val: 6}, {v: new THREE.Vector3(1,0,0), val: 3}, {v: new THREE.Vector3(-1,0,0), val: 4}, {v: new THREE.Vector3(0,0,1), val: 5}, {v: new THREE.Vector3(0,0,-1), val: 2}];
+        let max = -1, result = 1;
+        const q = new THREE.Quaternion(body.quaternion.x, body.quaternion.y, body.quaternion.z, body.quaternion.w);
+        faces.forEach(f => {
+            const worldV = f.v.clone().applyQuaternion(q);
+            const dot = worldV.dot(new THREE.Vector3(0,1,0));
+            if(dot > max) { max = dot; result = f.val; }
+        });
+        return result;
+    }
 
-function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+    // リロール後にダイスの見た目を結果に合わせて強制更新
+    // val を上面にするクォータニオンを設定する
+    function forceDiceFaceUp(bodyIndex, val) {
+        // faceValues = [3,4,1,6,5,2] → +X/-X/+Y/-Y/+Z/-Z
+        // val→上面にするには、その面の法線を(0,1,0)に向ければいい
+        const faceToDir = {
+            1: new THREE.Vector3(0, 1, 0),   // +Y が上 → そのまま
+            6: new THREE.Vector3(0, -1, 0),  // -Y が上 → 180度回転
+            3: new THREE.Vector3(1, 0, 0),   // +X が上
+            4: new THREE.Vector3(-1, 0, 0),  // -X が上
+            5: new THREE.Vector3(0, 0, 1),   // +Z が上
+            2: new THREE.Vector3(0, 0, -1),  // -Z が上
+        };
+        const dir = faceToDir[val];
+        if (!dir) return;
+        const q = new THREE.Quaternion().setFromUnitVectors(dir, new THREE.Vector3(0, 1, 0));
+        // 見た目上の揺らぎを少し加えてランダム感を出す
+        const jitter = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), Math.random() * Math.PI * 2);
+        q.multiply(jitter);
+        const body = diceBodies[bodyIndex];
+        const mesh = diceMeshes[bodyIndex];
+        body.quaternion.set(q.x, q.y, q.z, q.w);
+        body.velocity.set(0,0,0);
+        body.angularVelocity.set(0,0,0);
+        mesh.quaternion.copy(q);
+    }
 
-function authAdmin() {
-    if (!document.getElementById('admin-pw').value.includes('ryo1031')) return alert('コードが違う');
-    document.getElementById('admin-panel-ui').style.display  = 'block';
-    document.getElementById('admin-auth-area').style.display = 'none';
-    document.getElementById('adm-kakuhen-prob').value = (G.kakuhenProb*100).toFixed(0);
-    document.getElementById('adm-normal-prob').value  = (G.normalProb*100).toFixed(0);
-    document.getElementById('adm-gold-prob').value    = (G.goldProb*100).toFixed(0);
-    document.getElementById('adm-silver-rate').value  = G.silverRate;
-    document.getElementById('adm-gold-rate').value    = G.goldRate;
-    document.getElementById('adm-luck-multi').value   = G.luckMulti;
-}
+    window.addBurst = () => { if(!rolling || isFoul) return; burstPower += (equippedTool === 't-grip') ? 3 : 8; if(burstPower > 100) { isFoul = true; document.getElementById('msg').innerText = "FOUL!!"; diceBodies.forEach(b => b.velocity.y = 40); } else { diceBodies.forEach(b => { if(b.position.y < 2) b.velocity.y += 12; }); } };
+    window.payDebt = () => { if(debt <= 0) return; if(money >= debt) { money -= debt; debt = 0; checkMission(4); } else { debt -= money; money = 0; } saveData(); updateUI(); };
+    window.takeLoan = () => { money += 1000; debt += 1000; saveData(); updateUI(); };
 
-function applyAdminSelf() {
-    const m = parseInt(document.getElementById('adm-money').value);
-    const b = parseInt(document.getElementById('adm-balls').value);
-    if (!isNaN(m)) money=m;
-    if (!isNaN(b)) balls=b;
-    updateUI(); alert('書き換えた！');
-}
-
-function distributeGift() {
-    const m = parseInt(document.getElementById('adm-dist-money').value)||0;
-    const b = parseInt(document.getElementById('adm-dist-balls').value)||0;
-    if (!m&&!b) return alert('金額か玉数を入れてくれ');
-    db.ref('users').once('value', snap => {
-        snap.forEach(u => db.ref('gifts/'+u.key).push({money:m, balls:b}));
-        alert(`配布完了！ $${m.toLocaleString()} + ${b}玉`);
-    });
-}
-
-function postNews() {
-    const msg = document.getElementById('adm-news-input').value.trim();
-    if (!msg) return alert('内容を入れてくれ');
-    db.ref('system/news').once('value', snap => {
-        const existing = (snap.val()&&snap.val().messages) ? snap.val().messages : [];
-        const updated = [{text:msg, timestamp:Date.now()}, ...existing].slice(0,5);
-        db.ref('system/news').set({messages:updated});
-        document.getElementById('adm-news-input').value = '';
-        alert('投稿完了！');
-    });
-}
-
-function clearNews() {
-    db.ref('system/news').set({messages:[]});
-    alert('ニュースをクリアした');
-}
-
-function applyPayouts() {
-    const settings = {
-        kakuhen_prob: parseFloat(document.getElementById('adm-kakuhen-prob').value)/100,
-        normal_prob:  parseFloat(document.getElementById('adm-normal-prob').value)/100,
-        gold_prob:    parseFloat(document.getElementById('adm-gold-prob').value)/100,
-        silver_rate:  parseInt(document.getElementById('adm-silver-rate').value),
-        gold_rate:    parseInt(document.getElementById('adm-gold-rate').value),
-        luck_multi:   G.luckMulti
+    window.claimGift = () => {
+        if(window.pendingGift > 0 && window.currentGiftTs !== localStorage.getItem('last_gift_id')) {
+            money += window.pendingGift;
+            localStorage.setItem('last_gift_id', window.currentGiftTs);
+            window.pendingGift = 0;
+            document.getElementById('gift-box').style.display = 'none';
+            saveData(); updateUI();
+        } else {
+            alert("このギフトは既に受け取っているぜ！");
+            document.getElementById('gift-box').style.display = 'none';
+        }
     };
-    db.ref('system/settings').set(settings);
-    alert('配当を全員に反映した！');
-}
 
-let _lastEventTitle = null;
-let _eventClearTimer = null;
+    // 徳政令: 一回限り
+    window.useTokusei = () => {
+        if(tokuseiUsed) { alert("徳政令カードは既に使用済みだぜ！一回限りだ。"); return; }
+        if(debt <= 0) { alert("借金がないぜ！"); return; }
+        debt = 0;
+        tokuseiUsed = true;
+        checkMission(4);
+        checkMission(20);
+        saveData(); updateUI();
+    };
 
-function renderEventPanel(d) {
-    const el = document.getElementById('event-panel');
-    const section = el ? el.closest('.panel-section') : null;
-    if (!el) return;
+    window.buyItem = (id, price) => {
+        if(ownedItems.includes(id)) {
+            if(id.startsWith('t-')) equippedTool = (equippedTool === id) ? null : id;
+            else if(id.startsWith('s-')) { equippedSkin = (equippedSkin === id) ? 's-def' : id; setSkin(equippedSkin); }
+        } else if(money >= price) {
+            money -= price; ownedItems.push(id);
+            if(id.startsWith('t-')) equippedTool = id;
+            if(id.startsWith('s-')) { equippedSkin = id; setSkin(id); }
+            if(id === 't-grip') checkMission(11);
+            if(id === 't-heavy') checkMission(27);
+            if(id === 't-mag') checkMission(8);
+            if(id === 's-gold') checkMission(12);
+            if(id === 's-cyber') checkMission(26);
+            if(id === 's-prism') checkMission(15);
+            if(id === 's-glass') checkMission(15);
+        } else { alert("金が足りないぜ！"); return; }
+        saveData(); updateUI();
+    };
 
-    if (!d || !d.title) {
-        el.innerHTML = '<div class="no-event" style="color:#444;font-style:italic;">現在開催中のイベントはないぞ</div>';
-        if (section) section.classList.remove('event-active');
-        return;
+    window.setSkin = (id) => {
+    diceMeshes.forEach(m => m.userData.rainbow = false);
+    if (id === 's-prism') {
+        if (window.iceLights) window.iceLights.forEach(l => { l.intensity = 0; });
+        // メタリック質感
+        diceMeshes.forEach(m => {
+            const faceMats = [];
+            for (let fi = 0; fi < 6; fi++) {
+                const val = [3,4,1,6,5,2][fi];
+                const canvas = document.createElement('canvas');
+                canvas.width = 128; canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                // メタリックグラデーション背景
+                const grad = ctx.createLinearGradient(0,0,128,128);
+                grad.addColorStop(0, '#e8e8e8');
+                grad.addColorStop(0.3, '#ffffff');
+                grad.addColorStop(0.6, '#a0a0a0');
+                grad.addColorStop(1, '#c8c8c8');
+                ctx.fillStyle = grad; ctx.fillRect(0,0,128,128);
+                // ドット白縁+黒
+                const dot = (x,y) => {
+                    ctx.beginPath(); ctx.arc(x,y,18,0,Math.PI*2);
+                    ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.fill();
+                    ctx.beginPath(); ctx.arc(x,y,13,0,Math.PI*2);
+                    ctx.fillStyle=(val===1)?'#cc0000':'#222'; ctx.fill();
+                };
+                if(val===1) dot(64,64);
+                else if(val===2){dot(30,30);dot(98,98);}
+                else if(val===3){dot(30,30);dot(64,64);dot(98,98);}
+                else if(val===4){dot(30,30);dot(98,30);dot(30,98);dot(98,98);}
+                else if(val===5){dot(30,30);dot(98,30);dot(64,64);dot(30,98);dot(98,98);}
+                else if(val===6){dot(30,30);dot(98,30);dot(30,64);dot(98,64);dot(30,98);dot(98,98);}
+                faceMats.push(new THREE.MeshPhongMaterial({
+                    map: new THREE.CanvasTexture(canvas),
+                    specular: new THREE.Color(0xffffff),
+                    shininess: 120,
+                    reflectivity: 1.0,
+                }));
+            }
+            m.material = faceMats;
+        });
+    } else if (id === 's-glass') {
+        // 氷オーラON
+        if (window.iceLights) window.iceLights.forEach(l => { l.intensity = 1.8; l.distance = 4.0; });
+        // 氷ダイス
+        diceMeshes.forEach(m => {
+            const faceMats = [];
+            for (let fi = 0; fi < 6; fi++) {
+                const val = [3,4,1,6,5,2][fi];
+                const canvas = document.createElement('canvas');
+                canvas.width = 128; canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                // 氷っぽい青白グラデ背景
+                const bg = ctx.createLinearGradient(0,0,128,128);
+                bg.addColorStop(0,   '#dff4ff');
+                bg.addColorStop(0.35,'#b8e4f9');
+                bg.addColorStop(0.7, '#8acde8');
+                bg.addColorStop(1,   '#c8eeff');
+                ctx.fillStyle = bg; ctx.fillRect(0,0,128,128);
+                // 霜のひび割れ（細い白線）
+                ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+                ctx.lineWidth = 1.2;
+                [[20,10,60,55],[60,55,35,90],[60,55,90,80],[90,80,110,120],
+                 [10,80,45,100],[100,20,70,60],[70,60,110,40]].forEach(([x1,y1,x2,y2]) => {
+                    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+                });
+                // ハイライト
+                const hl = ctx.createRadialGradient(30,25,2,40,35,45);
+                hl.addColorStop(0,'rgba(255,255,255,0.7)');
+                hl.addColorStop(1,'rgba(255,255,255,0)');
+                ctx.fillStyle = hl; ctx.fillRect(0,0,128,128);
+                // ドット: 濃い青縁 + 白 + 濃紺中心
+                const dot = (x,y) => {
+                    ctx.beginPath(); ctx.arc(x,y,16,0,Math.PI*2);
+                    ctx.fillStyle='#1a6a9a'; ctx.fill();
+                    ctx.beginPath(); ctx.arc(x,y,12,0,Math.PI*2);
+                    ctx.fillStyle='#ffffff'; ctx.fill();
+                    ctx.beginPath(); ctx.arc(x,y,7,0,Math.PI*2);
+                    ctx.fillStyle=(val===1)?'#cc1111':'#0a3a5c'; ctx.fill();
+                };
+                if(val===1) dot(64,64);
+                else if(val===2){dot(30,30);dot(98,98);}
+                else if(val===3){dot(30,30);dot(64,64);dot(98,98);}
+                else if(val===4){dot(30,30);dot(98,30);dot(30,98);dot(98,98);}
+                else if(val===5){dot(30,30);dot(98,30);dot(64,64);dot(30,98);dot(98,98);}
+                else if(val===6){dot(30,30);dot(98,30);dot(30,64);dot(98,64);dot(30,98);dot(98,98);}
+                faceMats.push(new THREE.MeshPhongMaterial({
+                    map: new THREE.CanvasTexture(canvas),
+                    specular: new THREE.Color(0xaaddff),
+                    shininess: 160,
+                }));
+            }
+            m.material = faceMats;
+        });
+    } else {
+        // 氷オーラOFF
+        if (window.iceLights) window.iceLights.forEach(l => { l.intensity = 0; });
+        const mats = createDiceMat(SKINS[id], id !== 's-def');
+        diceMeshes.forEach(m => m.material = mats);
+    }
+};
+    function checkMission(id) { if(clearedMissions.includes(id)) return; const btn = document.getElementById('gb-'+id); if(btn) { btn.disabled = false; btn.classList.add('can-claim'); } }
+    window.claimMission = (id, reward) => { money += reward; clearedMissions.push(id); updateUI(); saveData(); };
+
+    function loadData() {
+        money = parseInt(localStorage.getItem('p_money')) || 500;
+        debt = parseInt(localStorage.getItem('p_debt')) || 0;
+        totalGames = parseInt(localStorage.getItem('p_games')) || 0;
+        totalWins = parseInt(localStorage.getItem('p_wins')) || 0;
+        totalEarned = parseInt(localStorage.getItem('p_earned')) || 0;
+        ownedItems = JSON.parse(localStorage.getItem('p_items')) || ['s-def'];
+        equippedTool = localStorage.getItem('p_equipped_tool') || null;
+        equippedSkin = localStorage.getItem('p_equipped_skin') || 's-def';
+        clearedMissions = JSON.parse(localStorage.getItem('p_missions')) || [];
+        consecutiveWins = parseInt(localStorage.getItem('p_consec_wins')) || 0;
+        hifumiCount = parseInt(localStorage.getItem('p_hifumi_count')) || 0;
+        tokuseiUsed = localStorage.getItem('p_tokusei_used') === 'true';
+        updateUI(); setSkin(equippedSkin);
+    }
+    function saveData() {
+        localStorage.setItem('p_money', money); localStorage.setItem('p_debt', debt);
+        localStorage.setItem('p_games', totalGames); localStorage.setItem('p_wins', totalWins);
+        localStorage.setItem('p_earned', totalEarned); localStorage.setItem('p_items', JSON.stringify(ownedItems));
+        localStorage.setItem('p_equipped_tool', equippedTool || ""); localStorage.setItem('p_equipped_skin', equippedSkin);
+        localStorage.setItem('p_missions', JSON.stringify(clearedMissions));
+        localStorage.setItem('p_consec_wins', consecutiveWins);
+        localStorage.setItem('p_hifumi_count', hifumiCount);
+        localStorage.setItem('p_tokusei_used', tokuseiUsed ? 'true' : 'false');
     }
 
-    const current = d.current || 0;
-    const goal    = d.goal || 1;
-    const pct     = Math.min(current / goal * 100, 100).toFixed(1);
-    const done    = current >= goal;
+    function updateUI() {
+        document.getElementById('money').innerText = Math.floor(money).toLocaleString();
+        document.getElementById('debt').innerText = Math.floor(debt).toLocaleString();
 
-    // 新イベント開始トースト
-    if (_lastEventTitle !== d.title) {
-        _lastEventTitle = d.title;
-        if (!done) toast(`🎉 イベント開始！「${d.title}」目標: $${goal.toLocaleString()}`, '#f55', 4000);
-    }
+        const itemCount = ownedItems.filter(i=>i!=='s-def').length;
+        document.getElementById('stat-items').innerText = itemCount;
+        document.getElementById('bar-items').style.width = (itemCount / 7 * 100) + "%";
 
-    // パネルを光らせる
-    if (section) section.classList.toggle('event-active', !done);
+        const winRate = totalGames > 0 ? Math.round((totalWins / totalGames) * 100) : 0;
+        document.getElementById('stat-winrate').innerText = winRate + "%";
+        document.getElementById('bar-winrate').style.width = winRate + "%";
 
-    el.innerHTML = `
-        <div class="event-title" style="font-size:13px;margin-bottom:6px;">🎉 ${d.title}</div>
-        ${done
-            ? `<div class="event-complete">🏆 目標達成！おめでとう！</div>`
-            : `<div class="event-progress-wrap"><div class="event-progress-bar" style="width:${pct}%"></div></div>`
+        const lucks = ["BAD", "NORMAL", "GOOD", "EXCELLENT", "GODLIKE"];
+        document.getElementById('stat-luck').innerText = lucks[Math.min(4, Math.floor(winRate / 20))];
+
+        let title = "駆け出し";
+        if (debt > 50000) title = "借金王";
+        else if (money > 1000000) title = "カジノの主";
+        else if (money > 100000) title = "伝説の博徒";
+        else if (itemCount >= 6) title = "コレクター";
+        else if (money > 10000) title = "富豪";
+
+        document.getElementById('main-title').innerText = title;
+        document.getElementById('rollBtn').disabled = rolling || money <= 0;
+        document.getElementById('loanBtn').style.display = (money <= 0 && !rolling) ? "block" : "none";
+
+        // 配当表示更新
+        document.getElementById('pd-pinzoro').innerText = `x${window.PAYOUT_PINZORO||5}`;
+        document.getElementById('pd-zoro').innerText = `x${window.PAYOUT_ZORO||3}`;
+        document.getElementById('pd-shigozoro').innerText = `x${window.PAYOUT_SHIGOZORO||2}`;
+        document.getElementById('pd-pair').innerText = `x${window.PAYOUT_PAIR||1.5}`;
+        document.getElementById('luck-multi-display').innerText = `LUCK MULTI: x${window.LUCK_MULTI||1}`;
+
+        // 徳政令ボタン状態
+        const tokBtn = document.getElementById('btn-t-tokusei');
+        const tokStatus = document.getElementById('tokusei-status');
+        if(tokuseiUsed) {
+            tokBtn.style.cssText = 'width:100%; background:#0a0a0a; border:1px solid #444; color:#555; padding:8px; margin-bottom:6px; cursor:not-allowed; text-align:left; border-radius:4px; font-size:10px;';
+            tokBtn.disabled = true;
+            tokStatus.innerText = '[ 使用済み - 一回限り ]';
+            tokStatus.style.color = '#555';
+        } else {
+            tokBtn.style.cssText = '';
+            tokBtn.disabled = false;
+            tokStatus.innerText = debt > 0 ? '[ 使用可能 ]' : '[ 借金なし ]';
+            tokStatus.style.color = debt > 0 ? '#0ff' : '#555';
         }
-        <div class="event-amount" style="margin-top:5px;">
-            <span>💰 $${current.toLocaleString()}</span>
-            <span>🎯 $${goal.toLocaleString()}</span>
-        </div>
-        <div style="text-align:center;color:#ff0;font-size:10px;margin-top:4px;">${pct}% 達成${d.bonus ? ` ／ ボーナス: $${parseInt(d.bonus).toLocaleString()}` : ''}</div>
-    `;
 
-    // 達成後30秒でFirebaseから自動削除
-    if (done) {
-        if (section) section.classList.remove('event-active');
-        if (_eventClearTimer) clearTimeout(_eventClearTimer);
-        _eventClearTimer = setTimeout(() => {
-            db.ref('system/event').remove();
-            _eventClearTimer = null;
-        }, 30000);
+        document.querySelectorAll('.item-btn').forEach(btn => {
+            const id = btn.id.replace('btn-', '');
+            if(id === 't-tokusei') return;
+            btn.classList.remove('owned', 'equipped');
+            if(id === equippedTool || id === equippedSkin) btn.classList.add('equipped');
+            else if(ownedItems.includes(id)) btn.classList.add('owned');
+        });
+
+        clearedMissions.forEach(id => { const b = document.getElementById('gb-'+id); if(b) { b.innerText = "済"; b.disabled = true; b.classList.remove('can-claim'); } });
     }
-}
 
-function postEvent() {
-    const title = document.getElementById('adm-event-title').value.trim();
-    const goal  = parseInt(document.getElementById('adm-event-goal').value);
-    const bonus = parseInt(document.getElementById('adm-event-bonus').value) || 0;
-    if (!title) return alert('イベント名を入れてくれ');
-    if (isNaN(goal) || goal <= 0) return alert('目標金額を入れてくれ');
-    db.ref('system/event').set({title, goal, bonus, current: 0, timestamp: Date.now()});
-    document.getElementById('adm-event-title').value = '';
-    document.getElementById('adm-event-goal').value  = '';
-    document.getElementById('adm-event-bonus').value = '';
-    alert(`イベント「${title}」開始！`);
-}
-
-function clearEvent() {
-    if (!confirm('イベントを終了する？')) return;
-    db.ref('system/event').remove();
-    alert('イベントを終了した');
-}
-
-function applyLuckMulti() {
-    const lm = parseFloat(document.getElementById('adm-luck-multi').value);
-    if (isNaN(lm)||lm<0) return alert('正しい値を入れてくれ');
-    db.ref('system/settings').update({luck_multi:lm});
-    alert(`ラックマルチ x${lm} を全員に反映した！`);
-}
-
-function onLogin(user) {
-    currentUser = user;
-    initData();
-    if (debt>0) {
-        const interest = Math.floor(debt*0.10);
-        debt+=interest;
-        setTimeout(() => toast(`💀 利息 +$${interest.toLocaleString()} 加算！ 残債: $${debt.toLocaleString()}`, '#f44', 3000), 1000);
-    }
-    document.getElementById('login-screen').style.display      = 'none';
-    document.getElementById('pachinko-container').style.display = 'flex';
-    document.getElementById('news-bar').style.display          = 'flex';
-    updateUI();
-    setupCanvas();
-    draw();
-    setTimeout(updateRanking, 600);
-    listenGifts();
-}
-
-// ===== Firebase初期化＆起動 =====
-function loadScript(src) {
-    return new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src=src; s.onload=resolve; s.onerror=reject;
-        document.head.appendChild(s);
-    });
-}
-
-async function startApp() {
-    await loadScript('https://www.gstatic.com/firebasejs/9.1.3/firebase-app-compat.js');
-    await loadScript('https://www.gstatic.com/firebasejs/9.1.3/firebase-auth-compat.js');
-    await loadScript('https://www.gstatic.com/firebasejs/9.1.3/firebase-database-compat.js');
-    firebase.initializeApp(firebaseConfig);
-    auth = firebase.auth();
-    db   = firebase.database();
-
-    // Firebaseリアルタイムリスナー
-    db.ref('system/settings').on('value', snap => {
-        const d = snap.val() || {};
-        if (d.kakuhen_prob !== undefined) G.kakuhenProb = d.kakuhen_prob;
-        if (d.normal_prob  !== undefined) G.normalProb  = d.normal_prob;
-        if (d.gold_prob    !== undefined) G.goldProb    = d.gold_prob;
-        if (d.silver_rate  !== undefined) G.silverRate  = d.silver_rate;
-        if (d.gold_rate    !== undefined) G.goldRate    = d.gold_rate;
-        if (d.luck_multi   !== undefined) G.luckMulti   = d.luck_multi;
-        if (currentUser) updateUI();
-    });
-    db.ref('system/event').on('value', snap => {
-        renderEventPanel(snap.val());
+    function animate() {
+    requestAnimationFrame(animate);
+    world.step(1/60);
+    diceBodies.forEach((b, i) => {
+        diceMeshes[i].position.copy(b.position);
+        diceMeshes[i].quaternion.copy(b.quaternion);
+        // 氷オーラ: ライトをダイスに追従
+        if (window.iceLights && window.iceLights[i]) {
+            window.iceLights[i].position.copy(b.position);
+        }
     });
 
-    db.ref('system/news').on('value', snap => {
-        const data = snap.val();
-        updateTicker((data&&data.messages) ? data.messages : []);
-    });
-
-    // ログイン状態監視
-    auth.onAuthStateChanged(user => { if (user) onLogin(user); });
-
-    // ログインボタン
-    document.getElementById('google-login-btn').addEventListener('click', () => {
-        auth.signInWithPopup(new firebase.auth.GoogleAuthProvider()).then(r => onLogin(r.user));
-    });
-
-    // 動的要素のイベント委譲
-    document.addEventListener('click', e => {
-        const el = e.target.closest('[data-action]');
-        if (!el) return;
-        const action = el.dataset.action;
-        if (action==='item')  itemAction(el.dataset.id, parseInt(el.dataset.price), el.dataset.type);
-        if (action==='loan')  takeLoan(el.dataset.id);
-        if (action==='claim') claimMission(el.dataset.id, parseInt(el.dataset.rm), parseInt(el.dataset.rb));
-    });
-
-    // 静的ボタンのバインド
-    const b = (id, fn) => { const el=document.getElementById(id); if(el) el.addEventListener('click', fn); };
-    b('btn-buy-balls',   () => buyBalls());
-    b('btn-custom-loan', () => takeCustomLoan());
-    b('btn-repay',       () => repayDebt(false));
-    b('btn-repay-all',   () => repayDebt(true));
-    b('btn-ex-bronze',   () => exchangeSingle('bronze'));
-    b('btn-ex-silver',   () => exchangeSingle('silver'));
-    b('btn-ex-gold',     () => exchangeSingle('gold'));
-    b('btn-gift',        () => openModal('gift-modal'));
-    b('btn-ad',          () => watchAd());
-    b('btn-admin',       () => openModal('admin-modal'));
-    b('btn-reset',       () => softReset());
-    b('btn-close-gift',  () => closeModal('gift-modal'));
-    b('ad-watch-btn',    () => startAdWatch());
-    b('btn-close-ad',    () => closeAdModal());
-    b('btn-auth-admin',  () => authAdmin());
-    b('btn-adm-self',    () => applyAdminSelf());
-    b('btn-adm-dist',    () => distributeGift());
-    b('btn-adm-news',    () => postNews());
-    b('btn-adm-clear',   () => clearNews());
-    b('btn-adm-payouts', () => applyPayouts());
-    b('btn-adm-luck',    () => applyLuckMulti());
-    b('btn-close-admin',      () => closeModal('admin-modal'));
-    b('btn-adm-event-post',  () => postEvent());
-    b('btn-adm-event-clear', () => clearEvent());
+    renderer.render(scene, camera);
 }
-
-startApp();
+    init(); animate(); loadData();
 </script>
 </body>
 </html>
