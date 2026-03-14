@@ -991,10 +991,10 @@
             if (Array.isArray(m.material)) {
                 m.material.forEach((mat, fi) => {
                     const hue = ((t * 0.5 + mi * 0.15 + fi * 0.12) % 1);
-                    const col = new THREE.Color().setHSL(hue, 1.0, 0.6);
+                    const col = new THREE.Color().setHSL(hue, 0.7, 0.45);
                     mat.color.set(col);
                     mat.emissive.set(col);
-                    mat.emissiveIntensity = 0.6;
+                    mat.emissiveIntensity = 0.2;
                     mat.needsUpdate = false;
                 });
             }
