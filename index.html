@@ -413,7 +413,7 @@
             <button class="item-btn" id="btn-s-gold" onclick="buyItem('s-gold', 30000)">黄金スキン <span class="price">$30k</span></button>
             <button class="item-btn" id="btn-s-cyber" onclick="buyItem('s-cyber', 100000)">電脳スキン <span class="price">$100k</span></button>
             <button class="item-btn" id="btn-s-prism" onclick="buyItem('s-prism', 500000)">メタリックスキン <span class="price">$500k</span></button>
-            <button class="item-btn" id="btn-s-glass" onclick="buyItem('s-glass', 2000000)">ガラスダイス <span class="price">$2M</span></button>
+            <button class="item-btn" id="btn-s-glass" onclick="buyItem('s-glass', 2000000)">🧊 氷ダイス <span class="price">$2M</span></button>
         </div>
     </div>
 
@@ -531,7 +531,7 @@
     let clearedMissions = [], taxTimeLeft = 60;
     let consecutiveWins = 0, hifumiCount = 0, tokuseiUsed = false;
     let scene, camera, renderer, world, diceBodies = [], diceMeshes = [];
-    const SKINS = { 's-def': 0xffffff, 's-gold': 0xffd700, 's-cyber': 0xbc00ff, 's-prism': 0xc0c0c0, 's-glass': 'glass' };
+    const SKINS = { 's-def': 0xffffff, 's-gold': 0xffd700, 's-cyber': 0xbc00ff, 's-prism': 0xc0c0c0, 's-glass': 'ice' };
 
     function triggerAccident() {
         const log = document.getElementById('accident-log');
@@ -919,7 +919,7 @@
             m.material = faceMats;
         });
     } else if (id === 's-glass') {
-        // ガラス質感
+        // 氷ダイス
         diceMeshes.forEach(m => {
             const faceMats = [];
             for (let fi = 0; fi < 6; fi++) {
@@ -927,26 +927,33 @@
                 const canvas = document.createElement('canvas');
                 canvas.width = 128; canvas.height = 128;
                 const ctx = canvas.getContext('2d');
-                // 透明っぽい薄い青みがかった背景
-                ctx.clearRect(0,0,128,128);
-                ctx.fillStyle = 'rgba(180,220,255,0.18)'; ctx.fillRect(0,0,128,128);
-                // ハイライト（光の反射っぽく）
-                const grad = ctx.createLinearGradient(0,0,80,80);
-                grad.addColorStop(0, 'rgba(255,255,255,0.55)');
-                grad.addColorStop(0.4, 'rgba(255,255,255,0.08)');
-                grad.addColorStop(1, 'rgba(180,220,255,0.0)');
-                ctx.fillStyle = grad; ctx.fillRect(0,0,128,128);
-                // ドット
+                // 氷っぽい青白グラデ背景
+                const bg = ctx.createLinearGradient(0,0,128,128);
+                bg.addColorStop(0,   '#dff4ff');
+                bg.addColorStop(0.35,'#b8e4f9');
+                bg.addColorStop(0.7, '#8acde8');
+                bg.addColorStop(1,   '#c8eeff');
+                ctx.fillStyle = bg; ctx.fillRect(0,0,128,128);
+                // 霜のひび割れ（細い白線）
+                ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+                ctx.lineWidth = 1.2;
+                [[20,10,60,55],[60,55,35,90],[60,55,90,80],[90,80,110,120],
+                 [10,80,45,100],[100,20,70,60],[70,60,110,40]].forEach(([x1,y1,x2,y2]) => {
+                    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+                });
+                // ハイライト
+                const hl = ctx.createRadialGradient(30,25,2,40,35,45);
+                hl.addColorStop(0,'rgba(255,255,255,0.7)');
+                hl.addColorStop(1,'rgba(255,255,255,0)');
+                ctx.fillStyle = hl; ctx.fillRect(0,0,128,128);
+                // ドット: 濃い青縁 + 白 + 濃紺中心
                 const dot = (x,y) => {
-                    // 黒縁（一番外）
-                    ctx.beginPath(); ctx.arc(x,y,17,0,Math.PI*2);
-                    ctx.fillStyle='rgba(0,0,0,0.9)'; ctx.fill();
-                    // 白枠
-                    ctx.beginPath(); ctx.arc(x,y,14,0,Math.PI*2);
-                    ctx.fillStyle='rgba(255,255,255,0.95)'; ctx.fill();
-                    // 中心色
-                    ctx.beginPath(); ctx.arc(x,y,9,0,Math.PI*2);
-                    ctx.fillStyle=(val===1)?'#ff3333':'#1a1a2e'; ctx.fill();
+                    ctx.beginPath(); ctx.arc(x,y,16,0,Math.PI*2);
+                    ctx.fillStyle='#1a6a9a'; ctx.fill();
+                    ctx.beginPath(); ctx.arc(x,y,12,0,Math.PI*2);
+                    ctx.fillStyle='#ffffff'; ctx.fill();
+                    ctx.beginPath(); ctx.arc(x,y,7,0,Math.PI*2);
+                    ctx.fillStyle=(val===1)?'#cc1111':'#0a3a5c'; ctx.fill();
                 };
                 if(val===1) dot(64,64);
                 else if(val===2){dot(30,30);dot(98,98);}
@@ -956,11 +963,8 @@
                 else if(val===6){dot(30,30);dot(98,30);dot(30,64);dot(98,64);dot(30,98);dot(98,98);}
                 faceMats.push(new THREE.MeshPhongMaterial({
                     map: new THREE.CanvasTexture(canvas),
-                    transparent: true,
-                    opacity: 0.55,
-                    specular: new THREE.Color(0xffffff),
-                    shininess: 200,
-                    side: THREE.DoubleSide,
+                    specular: new THREE.Color(0xaaddff),
+                    shininess: 160,
                 }));
             }
             m.material = faceMats;
