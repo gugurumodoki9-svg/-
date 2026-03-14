@@ -412,7 +412,7 @@
             <div class="title">DICE SKINS</div>
             <button class="item-btn" id="btn-s-gold" onclick="buyItem('s-gold', 30000)">黄金スキン <span class="price">$30k</span></button>
             <button class="item-btn" id="btn-s-cyber" onclick="buyItem('s-cyber', 100000)">電脳スキン <span class="price">$100k</span></button>
-            <button class="item-btn" id="btn-s-prism" onclick="buyItem('s-prism', 500000)">虹色スキン <span class="price">$500k</span></button>
+            <button class="item-btn" id="btn-s-prism" onclick="buyItem('s-prism', 500000)">メタリックスキン <span class="price">$500k</span></button>
         </div>
     </div>
 
@@ -530,7 +530,7 @@
     let clearedMissions = [], taxTimeLeft = 60;
     let consecutiveWins = 0, hifumiCount = 0, tokuseiUsed = false;
     let scene, camera, renderer, world, diceBodies = [], diceMeshes = [];
-    const SKINS = { 's-def': 0xffffff, 's-gold': 0xffd700, 's-cyber': 0xbc00ff, 's-prism': 'rainbow' };
+    const SKINS = { 's-def': 0xffffff, 's-gold': 0xffd700, 's-cyber': 0xbc00ff, 's-prism': 0xc0c0c0 };
 
     function triggerAccident() {
         const log = document.getElementById('accident-log');
@@ -877,12 +877,46 @@
     };
 
     window.setSkin = (id) => {
+    diceMeshes.forEach(m => m.userData.rainbow = false);
     if (id === 's-prism') {
-        // レインボーは単色じゃなくアニメーション側で処理
-        diceMeshes.forEach(m => m.userData.rainbow = true);
-        diceMeshes.forEach(m => m.material = createDiceMat(0xff0000, true));
+        // メタリック質感
+        diceMeshes.forEach(m => {
+            const faceMats = [];
+            for (let fi = 0; fi < 6; fi++) {
+                const val = [3,4,1,6,5,2][fi];
+                const canvas = document.createElement('canvas');
+                canvas.width = 128; canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                // メタリックグラデーション背景
+                const grad = ctx.createLinearGradient(0,0,128,128);
+                grad.addColorStop(0, '#e8e8e8');
+                grad.addColorStop(0.3, '#ffffff');
+                grad.addColorStop(0.6, '#a0a0a0');
+                grad.addColorStop(1, '#c8c8c8');
+                ctx.fillStyle = grad; ctx.fillRect(0,0,128,128);
+                // ドット白縁+黒
+                const dot = (x,y) => {
+                    ctx.beginPath(); ctx.arc(x,y,18,0,Math.PI*2);
+                    ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.fill();
+                    ctx.beginPath(); ctx.arc(x,y,13,0,Math.PI*2);
+                    ctx.fillStyle=(val===1)?'#cc0000':'#222'; ctx.fill();
+                };
+                if(val===1) dot(64,64);
+                else if(val===2){dot(30,30);dot(98,98);}
+                else if(val===3){dot(30,30);dot(64,64);dot(98,98);}
+                else if(val===4){dot(30,30);dot(98,30);dot(30,98);dot(98,98);}
+                else if(val===5){dot(30,30);dot(98,30);dot(64,64);dot(30,98);dot(98,98);}
+                else if(val===6){dot(30,30);dot(98,30);dot(30,64);dot(98,64);dot(30,98);dot(98,98);}
+                faceMats.push(new THREE.MeshPhongMaterial({
+                    map: new THREE.CanvasTexture(canvas),
+                    specular: new THREE.Color(0xffffff),
+                    shininess: 120,
+                    reflectivity: 1.0,
+                }));
+            }
+            m.material = faceMats;
+        });
     } else {
-        diceMeshes.forEach(m => m.userData.rainbow = false);
         const mats = createDiceMat(SKINS[id], id !== 's-def');
         diceMeshes.forEach(m => m.material = mats);
     }
@@ -982,24 +1016,7 @@
         diceMeshes[i].position.copy(b.position);
         diceMeshes[i].quaternion.copy(b.quaternion);
     });
-    // レインボーアニメーション
-    if (equippedSkin === 's-prism') {
-        const t = Date.now() * 0.001;
-        diceMeshes.forEach((m, mi) => {
-            if (!m.userData.rainbow) return;
-            // 各面を少しずつ位相をずらした色に
-            if (Array.isArray(m.material)) {
-                m.material.forEach((mat, fi) => {
-                    const hue = ((t * 0.5 + mi * 0.15 + fi * 0.12) % 1);
-                    const col = new THREE.Color().setHSL(hue, 0.8, 0.55);
-                    mat.color.set(col);
-                    mat.emissive.set(col);
-                    mat.emissiveIntensity = 0.2;
-                    mat.needsUpdate = false;
-                });
-            }
-        });
-    }
+
     renderer.render(scene, camera);
 }
     init(); animate(); loadData();
