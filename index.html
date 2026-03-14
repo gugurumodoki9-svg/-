@@ -881,6 +881,7 @@
     window.setSkin = (id) => {
     diceMeshes.forEach(m => m.userData.rainbow = false);
     if (id === 's-prism') {
+        if (window.iceLights) window.iceLights.forEach(l => { l.intensity = 0; });
         // メタリック質感
         diceMeshes.forEach(m => {
             const faceMats = [];
@@ -919,6 +920,8 @@
             m.material = faceMats;
         });
     } else if (id === 's-glass') {
+        // 氷オーラON
+        if (window.iceLights) window.iceLights.forEach(l => { l.intensity = 1.8; l.distance = 4.0; });
         // 氷ダイス
         diceMeshes.forEach(m => {
             const faceMats = [];
@@ -970,6 +973,8 @@
             m.material = faceMats;
         });
     } else {
+        // 氷オーラOFF
+        if (window.iceLights) window.iceLights.forEach(l => { l.intensity = 0; });
         const mats = createDiceMat(SKINS[id], id !== 's-def');
         diceMeshes.forEach(m => m.material = mats);
     }
@@ -1068,6 +1073,10 @@
     diceBodies.forEach((b, i) => {
         diceMeshes[i].position.copy(b.position);
         diceMeshes[i].quaternion.copy(b.quaternion);
+        // 氷オーラ: ライトをダイスに追従
+        if (window.iceLights && window.iceLights[i]) {
+            window.iceLights[i].position.copy(b.position);
+        }
     });
 
     renderer.render(scene, camera);
