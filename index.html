@@ -31,10 +31,10 @@
             const loginArea = document.getElementById('login-area');
             if (user) {
                 loginArea.innerHTML = `<span style="color:#0ff; font-size:12px;">👤 ${user.displayName}</span>
-                <button class="cyber-btn-s" onclick="saveRank()">同期</button>
-                <button class="cyber-btn-s" onclick="logout()">ログアウト</button>`;
+                <button class="cyber-btn-s" onclick="window.saveRank && window.saveRank()">同期</button>
+                <button class="cyber-btn-s" onclick="window.logout && window.logout()">ログアウト</button>`;
             } else {
-                loginArea.innerHTML = `<button class="cyber-btn-s" onclick="login()">Googleログイン</button>`;
+                loginArea.innerHTML = `<button class="cyber-btn-s" onclick="window.login && window.login()">Googleログイン</button>`;
             }
         });
 
@@ -312,7 +312,7 @@
         <div class="admin-section">
             <div class="admin-section-title" style="color:var(--pink);">💰 一斉配布</div>
             <input type="number" id="admin-dist-amt" placeholder="配布金額" class="admin-input-style">
-            <button class="main-btn" onclick="distributeMoney()" style="background:var(--pink);">一斉配布実行</button>
+            <button class="main-btn" onclick="window.distributeMoney && window.distributeMoney()" style="background:var(--pink);">一斉配布実行</button>
         </div>
 
         <!-- ニュース投稿 -->
@@ -320,8 +320,8 @@
             <div class="admin-section-title" style="color:var(--neon);">📡 ニュース投稿</div>
             <textarea id="admin-news-input" placeholder="ニュース内容を入力..." class="admin-input-style" style="height:60px; resize:none;"></textarea>
             <div style="display:flex; gap:6px;">
-                <button class="main-btn" onclick="postNews()" style="background:var(--neon); flex:1;">投稿</button>
-                <button class="main-btn" onclick="clearNews()" style="background:#333; color:#fff; border:1px solid #666; flex:0.5; font-size:10px;">全消去</button>
+                <button class="main-btn" onclick="window.postNews && window.postNews()" style="background:var(--neon); flex:1;">投稿</button>
+                <button class="main-btn" onclick="window.clearNews && window.clearNews()" style="background:#333; color:#fff; border:1px solid #666; flex:0.5; font-size:10px;">全消去</button>
             </div>
         </div>
 
@@ -346,7 +346,7 @@
                     <input type="number" id="payout-pair" step="0.5" min="1" value="1.5">
                 </div>
             </div>
-            <button class="main-btn" onclick="updatePayouts()" style="background:var(--gold); color:#000;">配当率を更新</button>
+            <button class="main-btn" onclick="window.updatePayouts && window.updatePayouts()" style="background:var(--gold); color:#000;">配当率を更新</button>
         </div>
 
         <!-- ラックマルチ変更 -->
@@ -354,14 +354,14 @@
             <div class="admin-section-title" style="color:#a0f;">🍀 ラックマルチ変更</div>
             <p style="font-size:9px; color:#888; margin:0 0 6px; text-align:center;">勝利報酬にかかる倍率 / デフォルト: 1</p>
             <input type="number" id="admin-luck-multi" step="0.1" min="0" value="1" placeholder="例: 1.5" class="admin-input-style" style="border-color:#a0f; text-align:center; font-size:18px; font-weight:bold; color:#a0f;">
-            <button class="main-btn" onclick="applyLuckMulti()" style="background:#a0f; color:#fff;">全員に反映</button>
+            <button class="main-btn" onclick="window.applyLuckMulti && window.applyLuckMulti()" style="background:#a0f; color:#fff;">全員に反映</button>
         </div>
 
         <!-- 所持金変更 -->
         <div class="admin-section">
             <div class="admin-section-title" style="color:#888;">🔧 デバッグ</div>
             <input type="number" id="admin-my-money" placeholder="自分の所持金変更" class="admin-input-style">
-            <button class="main-btn" onclick="setMyMoney()" style="background:#555; color:#fff;">所持金変更</button>
+            <button class="main-btn" onclick="window.setMyMoney && window.setMyMoney()" style="background:#555; color:#fff;">所持金変更</button>
         </div>
 
         <button onclick="document.getElementById('admin-overlay').style.display='none'" style="margin-top:10px; color:#888; background:none; border:1px solid #333; cursor:pointer; width:100%; padding:8px; border-radius:4px; font-family:'Courier New',monospace;">[ 閉じる ]</button>
@@ -410,8 +410,8 @@
         </div>
         <div class="sub-box">
             <div class="title">DICE SKINS</div>
-            <button class="item-btn" id="btn-s-gold" onclick="buyItem('s-gold', 30000)">黄金スキン <span class="price">$30k</span></button>
-            <button class="item-btn" id="btn-s-cyber" onclick="buyItem('s-cyber', 100000)">電脳スキン <span class="price">$100k</span></button>
+            <button class="item-btn" id="btn-s-gold" onclick="buyItem('s-gold', 30000)">🔴 ルビーダイス <span class="price">$30k</span></button>
+            <button class="item-btn" id="btn-s-cyber" onclick="buyItem('s-cyber', 100000)">🌋 溶岩ダイス <span class="price">$100k</span></button>
             <button class="item-btn" id="btn-s-prism" onclick="buyItem('s-prism', 500000)">メタリックスキン <span class="price">$500k</span></button>
             <button class="item-btn" id="btn-s-glass" onclick="buyItem('s-glass', 2000000)">🧊 氷ダイス <span class="price">$2M</span></button>
         </div>
@@ -430,7 +430,7 @@
                 <li>100回プレイ <button class="cyber-btn-s" id="gb-14" disabled onclick="claimMission(14, 50000)">$50k</button></li>
                 <li>滑り止め購入 <button class="cyber-btn-s" id="gb-11" disabled onclick="claimMission(11, 2000)">$2k</button></li>
                 <li>電磁ダイス購入 <button class="cyber-btn-s" id="gb-8" disabled onclick="claimMission(8, 100000)">$100k</button></li>
-                <li>黄金スキン購入 <button class="cyber-btn-s" id="gb-12" disabled onclick="claimMission(12, 10000)">$10k</button></li>
+                <li>ルビーダイス購入 <button class="cyber-btn-s" id="gb-12" disabled onclick="claimMission(12, 10000)">$10k</button></li>
                 <li>虹色スキン購入 <button class="cyber-btn-s" id="gb-15" disabled onclick="claimMission(15, 200000)">$200k</button></li>
                 <li>累計$100k稼ぐ <button class="cyber-btn-s" id="gb-9" disabled onclick="claimMission(9, 30000)">$30k</button></li>
                 <li>累計$1M稼ぐ <button class="cyber-btn-s" id="gb-16" disabled onclick="claimMission(16, 100000)">$100k</button></li>
@@ -446,7 +446,7 @@
                 <li>累計$50M稼ぐ <button class="cyber-btn-s" id="gb-23" disabled onclick="claimMission(23, 5000000)">$5M</button></li>
                 <li>所持金$5M達成 <button class="cyber-btn-s" id="gb-24" disabled onclick="claimMission(24, 1000000)">$1M</button></li>
                 <li>借金$100k超え <button class="cyber-btn-s" id="gb-25" disabled onclick="claimMission(25, 20000)">$20k</button></li>
-                <li>電脳スキン購入 <button class="cyber-btn-s" id="gb-26" disabled onclick="claimMission(26, 50000)">$50k</button></li>
+                <li>溶岩ダイス購入 <button class="cyber-btn-s" id="gb-26" disabled onclick="claimMission(26, 50000)">$50k</button></li>
                 <li>重ダイス購入 <button class="cyber-btn-s" id="gb-27" disabled onclick="claimMission(27, 20000)">$20k</button></li>
                 <li>ヒフミ地獄(3回) <button class="cyber-btn-s" id="gb-28" disabled onclick="claimMission(28, 15000)">$15k</button></li>
                 <li>勝率60%(20戦~) <button class="cyber-btn-s" id="gb-29" disabled onclick="claimMission(29, 50000)">$50k</button></li>
@@ -467,7 +467,7 @@
         </div>
         <div class="sub-box" style="border-color:#333; margin-top:auto; padding: 5px;">
             <input type="password" id="admin-input" placeholder="admin code" style="width:65%; font-size:9px; background:#000; border:1px solid #444; color:#fff;">
-            <button class="cyber-btn-s" onclick="checkAdmin()">OK</button>
+            <button class="cyber-btn-s" onclick="window.checkAdmin && window.checkAdmin()">OK</button>
         </div>
     </div>
 
@@ -531,7 +531,7 @@
     let clearedMissions = [], taxTimeLeft = 60;
     let consecutiveWins = 0, hifumiCount = 0, tokuseiUsed = false;
     let scene, camera, renderer, world, diceBodies = [], diceMeshes = [];
-    const SKINS = { 's-def': 0xffffff, 's-gold': 0xffd700, 's-cyber': 0xbc00ff, 's-prism': 0xc0c0c0, 's-glass': 'ice' };
+    const SKINS = { 's-def': 0xffffff, 's-gold': 0xff2222, 's-cyber': 'lava', 's-prism': 0xc0c0c0, 's-glass': 'ice' };
 
     function triggerAccident() {
         const log = document.getElementById('accident-log');
@@ -566,25 +566,28 @@
         world = new CANNON.World(); world.gravity.set(0, -45, 0);
         const diceMat = new CANNON.Material(); const bowlMat = new CANNON.Material();
         world.addContactMaterial(new CANNON.ContactMaterial(diceMat, bowlMat, { friction: 0.1, restitution: 0.5 }));
+        // お椀の底面
         const ground = new CANNON.Body({ mass: 0, material: bowlMat });
-        ground.addShape(new CANNON.Plane()); ground.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0), -Math.PI/2);
+        ground.addShape(new CANNON.Plane());
+        ground.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0), -Math.PI/2);
         world.addBody(ground);
-        const segments = 32, radius = 3.6;
-        for(let i=0; i<segments; i++) {
-            const angle = (i/segments) * Math.PI * 2;
-            // 下段の壁
-            const wall = new CANNON.Body({ mass: 0, material: bowlMat });
-            wall.addShape(new CANNON.Box(new CANNON.Vec3(1.3, 2.0, 1)));
-            wall.position.set(Math.cos(angle)*radius, 1.5, Math.sin(angle)*radius);
-            wall.quaternion.setFromAxisAngle(new CANNON.Vec3(0,1,0), -angle);
-            world.addBody(wall);
-            // 上段の壁（飛び出し防止）
-            const wallTop = new CANNON.Body({ mass: 0, material: bowlMat });
-            wallTop.addShape(new CANNON.Box(new CANNON.Vec3(1.3, 1.5, 1)));
-            wallTop.position.set(Math.cos(angle)*radius, 4.5, Math.sin(angle)*radius);
-            wallTop.quaternion.setFromAxisAngle(new CANNON.Vec3(0,1,0), -angle);
-            world.addBody(wallTop);
+
+        // お椀の斜面（内側に傾いた板を円形に配置）
+        const bowlSegments = 24, bowlRadius = 3.2, bowlTilt = Math.PI * 0.28;
+        for (let i = 0; i < bowlSegments; i++) {
+            const angle = (i / bowlSegments) * Math.PI * 2;
+            const panel = new CANNON.Body({ mass: 0, material: bowlMat });
+            panel.addShape(new CANNON.Box(new CANNON.Vec3(0.85, 2.5, 0.15)));
+            panel.position.set(Math.cos(angle) * bowlRadius, 1.2, Math.sin(angle) * bowlRadius);
+            // まずY軸で円周方向に回転し、次にX軸で内側に傾ける
+            const qY = new CANNON.Quaternion();
+            qY.setFromAxisAngle(new CANNON.Vec3(0,1,0), -angle);
+            const qX = new CANNON.Quaternion();
+            qX.setFromAxisAngle(new CANNON.Vec3(1,0,0), bowlTilt);
+            panel.quaternion = qY.mult(qX);
+            world.addBody(panel);
         }
+
 
         const size = 0.6;
         for(let i=0; i<3; i++) {
@@ -888,7 +891,56 @@
 
     window.setSkin = (id) => {
     diceMeshes.forEach(m => m.userData.rainbow = false);
-    if (id === 's-prism') {
+    if (id === 's-cyber') {
+        // 溶岩ダイス: 黒ベースにオレンジ亀裂
+        if (window.iceLights) window.iceLights.forEach(l => { l.intensity = 0; });
+        diceMeshes.forEach(m => {
+            m.userData.rainbow = false;
+            const faceMats = [];
+            for (let fi = 0; fi < 6; fi++) {
+                const val = [3,4,1,6,5,2][fi];
+                const canvas = document.createElement('canvas');
+                canvas.width = 128; canvas.height = 128;
+                const ctx = canvas.getContext('2d');
+                // 黒背景
+                ctx.fillStyle = '#111'; ctx.fillRect(0,0,128,128);
+                // 亀裂（オレンジ/赤の線）
+                ctx.lineWidth = 2.5;
+                const cracks = [[10,20,50,60],[50,60,30,100],[50,60,80,90],[80,90,110,120],
+                                 [0,80,40,110],[100,10,70,50],[70,50,120,80],[20,0,60,40]];
+                cracks.forEach(([x1,y1,x2,y2]) => {
+                    const g = ctx.createLinearGradient(x1,y1,x2,y2);
+                    g.addColorStop(0,'rgba(255,80,0,0.9)');
+                    g.addColorStop(0.5,'rgba(255,200,0,1.0)');
+                    g.addColorStop(1,'rgba(255,50,0,0.7)');
+                    ctx.strokeStyle = g; ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+                });
+                // 発光ぼかし
+                ctx.shadowColor = '#ff6600'; ctx.shadowBlur = 8;
+                // ドット: 白縁+オレンジ中心
+                const dot = (x,y) => {
+                    ctx.shadowBlur = 0;
+                    ctx.beginPath(); ctx.arc(x,y,16,0,Math.PI*2);
+                    ctx.fillStyle='rgba(255,255,255,0.9)'; ctx.fill();
+                    ctx.beginPath(); ctx.arc(x,y,11,0,Math.PI*2);
+                    ctx.fillStyle=(val===1)?'#ff0000':'#ff6600'; ctx.fill();
+                };
+                if(val===1) dot(64,64);
+                else if(val===2){dot(30,30);dot(98,98);}
+                else if(val===3){dot(30,30);dot(64,64);dot(98,98);}
+                else if(val===4){dot(30,30);dot(98,30);dot(30,98);dot(98,98);}
+                else if(val===5){dot(30,30);dot(98,30);dot(64,64);dot(30,98);dot(98,98);}
+                else if(val===6){dot(30,30);dot(98,30);dot(30,64);dot(98,64);dot(30,98);dot(98,98);}
+                faceMats.push(new THREE.MeshPhongMaterial({
+                    map: new THREE.CanvasTexture(canvas),
+                    emissive: new THREE.Color(0xff3300),
+                    emissiveIntensity: 0.3,
+                    shininess: 40,
+                }));
+            }
+            m.material = faceMats;
+        });
+    } else if (id === 's-prism') {
         if (window.iceLights) window.iceLights.forEach(l => { l.intensity = 0; });
         // メタリック質感
         diceMeshes.forEach(m => {
