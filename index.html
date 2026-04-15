@@ -177,8 +177,8 @@
         :root { --neon: #0ff; --pink: #f0f; --gold: #ff0; --red: #ff4444; --bg-panel: #050505; }
         body { background: #000; color: #fff; font-family: 'Courier New', monospace; margin: 0; padding: 10px; display: flex; flex-direction: column; align-items: center; overflow-x: auto; }
         #login-area { width: 100%; max-width: 1250px; text-align: right; margin-bottom: 5px; }
-        #layout { display: flex; gap: 12px; justify-content: center; width: 100%; min-width: 1250px; align-items: stretch; }
-        .panel { background: var(--bg-panel); border: 2px solid var(--neon); border-radius: 12px; padding: 10px; box-shadow: 0 0 15px rgba(0, 255, 255, 0.1); display: flex; flex-direction: column; width: 270px; flex-shrink: 0; }
+        #layout { display: flex; gap: 12px; justify-content: center; width: 100%; align-items: stretch; flex-wrap: wrap; }
+        .panel { background: var(--bg-panel); border: 2px solid var(--neon); border-radius: 12px; padding: 10px; box-shadow: 0 0 15px rgba(0, 255, 255, 0.1); display: flex; flex-direction: column; width: 270px; flex-shrink: 0; min-width: 220px; }
         .sub-box { border: 1px solid var(--neon); border-radius: 6px; padding: 8px; margin-bottom: 8px; }
         .title { font-size: 11px; font-weight: bold; color: var(--neon); border-bottom: 1px solid var(--neon); margin-bottom: 8px; padding-bottom: 4px; text-transform: uppercase; text-align: center; letter-spacing: 2px; }
         
@@ -299,7 +299,23 @@
         .payout-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
         .payout-item label { font-size: 9px; color: #aaa; display: block; margin-bottom: 3px; }
         .payout-item input { width: 100%; padding: 6px; background: #111; color: var(--gold); border: 1px solid #444; border-radius: 3px; font-size: 11px; font-weight: bold; text-align: center; font-family: 'Courier New', monospace; box-sizing: border-box; }
-    </style>
+    
+        /* ===== レスポンシブ ===== */
+        @media (max-width: 900px) {
+            body { padding: 6px; }
+            #layout { flex-direction: column; align-items: center; gap: 8px; }
+            .panel { width: 100%; max-width: 480px; }
+            #canvas-wrap { width: 180px; height: 180px; }
+            .money-display { font-size: 22px; }
+            #news-bar { max-width: 100%; }
+        }
+        @media (max-width: 480px) {
+            .panel { width: 100%; max-width: 100%; }
+            #canvas-wrap { width: 150px; height: 150px; }
+            .money-display { font-size: 18px; }
+            .mission-area { height: 150px; }
+        }
+</style>
 </head>
 <body>
 
