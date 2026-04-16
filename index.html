@@ -8,8 +8,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, doc, setDoc, getDocs, collection, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut, createUserWithEmailAndPassword, signInWithEmailAndPassword, updateProfile } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc, getDocs, collection, query, orderBy, limit, onSnapshot } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDYRzA0EbyZi5u2zN8eYR12wc2xRrP5OLg",
@@ -26,15 +26,29 @@
         const provider = new GoogleAuthProvider();
         let currentUser = null;
 
-        onAuthStateChanged(auth, (user) => {
+        onAuthStateChanged(auth, async (user) => {
             currentUser = user;
             const loginArea = document.getElementById('login-area');
             if (user) {
-                loginArea.innerHTML = `<span style="color:#0ff; font-size:12px;">👤 ${user.displayName}</span>
+                // Firestoreからユーザー名を取得（Email/Passwordユーザー用）
+                let displayName = user.displayName || 'Player';
+                try {
+                    const snap = await getDoc(doc(db, "usernames", user.uid));
+                    if (snap.exists()) displayName = snap.data().name;
+                } catch(e) {}
+                currentUser._displayName = displayName;
+
+                loginArea.innerHTML = `<span style="color:#0ff; font-size:12px;">👤 ${displayName}</span>
                 <button class="cyber-btn-s" onclick="window.saveRank && window.saveRank()">同期</button>
                 <button class="cyber-btn-s" onclick="window.logout && window.logout()">ログアウト</button>`;
+
+                // ログインモーダルを閉じる
+                document.getElementById('login-modal').style.display = 'none';
             } else {
-                loginArea.innerHTML = `<button class="cyber-btn-s" onclick="window.login && window.login()">Googleログイン</button>`;
+                loginArea.innerHTML = `
+                    <button class="cyber-btn-s" onclick="window.login && window.login()">Googleログイン</button>
+                    <button class="cyber-btn-s" onclick="window.openLoginModal && window.openLoginModal('login')" style="border-color:#0ff; color:#0ff;">ログイン</button>
+                    <button class="cyber-btn-s" onclick="window.openLoginModal && window.openLoginModal('register')" style="border-color:#f0f; color:#f0f;">新規登録</button>`;
             }
         });
 
@@ -99,13 +113,76 @@
             }
         });
 
-        window.login = () => signInWithPopup(auth, provider);
+        window.login = () => {
+            signInWithPopup(auth, provider).then(async r => {
+                // Googleユーザーの名前をFirestoreに保存
+                await setDoc(doc(db, "usernames", r.user.uid), { name: r.user.displayName });
+            }).catch(e => window.showLoginError('Googleログイン失敗: ' + e.message));
+        };
         window.logout = () => signOut(auth);
         window.saveRank = async () => {
             if (!currentUser) return;
+            const name = currentUser._displayName || currentUser.displayName || 'Player';
             const m = Math.max(0, parseInt(localStorage.getItem('p_money')) || 0);
             const d = parseInt(localStorage.getItem('p_debt')) || 0;
-            await setDoc(doc(db, "ranking", currentUser.uid), { name: currentUser.displayName, money: m, debt: d, updatedAt: Date.now() });
+            await setDoc(doc(db, "ranking", currentUser.uid), { name, money: m, debt: d, updatedAt: Date.now() });
+        };
+
+        // ===== ユーザー名+パスワード ログイン/登録 =====
+        let loginModalMode = 'login';
+
+        window.openLoginModal = (mode) => {
+            loginModalMode = mode || 'login';
+            window.switchLoginTab(loginModalMode);
+            window.showLoginError('');
+            document.getElementById('login-modal').style.display = 'flex';
+        };
+        window.closeLoginModal = () => {
+            document.getElementById('login-modal').style.display = 'none';
+        };
+        window.switchLoginTab = (mode) => {
+            loginModalMode = mode;
+            document.getElementById('tab-login').className  = 'login-tab' + (mode === 'login'    ? ' active' : '');
+            document.getElementById('tab-register').className = 'login-tab' + (mode === 'register' ? ' active' : '');
+            document.getElementById('login-submit-btn').textContent = mode === 'login' ? 'ログイン' : '新規登録';
+            window.showLoginError('');
+        };
+        window.showLoginError = (msg) => {
+            const el = document.getElementById('login-error');
+            if (el) el.textContent = msg;
+        };
+        window.submitLogin = async () => {
+            const username = document.getElementById('login-username').value.trim();
+            const password = document.getElementById('login-password').value;
+            if (!username)            return window.showLoginError('ユーザー名を入力してください');
+            if (username.length < 2)  return window.showLoginError('ユーザー名は2文字以上にしてください');
+            if (!/^[a-zA-Z0-9ぁ-んァ-ン一-龥ー_\-]+$/.test(username)) return window.showLoginError('使えない文字が含まれています');
+            if (password.length < 6)  return window.showLoginError('パスワードは6文字以上にしてください');
+
+            const fakeEmail = username.toLowerCase().replace(/[^a-z0-9]/g, '_') + '@chinchiro.local';
+
+            if (loginModalMode === 'login') {
+                try {
+                    await signInWithEmailAndPassword(auth, fakeEmail, password);
+                } catch(e) {
+                    if (e.code === 'auth/user-not-found')  window.showLoginError('ユーザーが見つかりません。新規登録してください');
+                    else if (e.code === 'auth/wrong-password') window.showLoginError('パスワードが違います');
+                    else window.showLoginError('ログイン失敗: ' + e.message);
+                }
+            } else {
+                try {
+                    // ユーザー名重複チェック
+                    const mapSnap = await getDoc(doc(db, "usernameMap", username.toLowerCase()));
+                    if (mapSnap.exists()) return window.showLoginError('そのユーザー名はすでに使われています');
+                    const r = await createUserWithEmailAndPassword(auth, fakeEmail, password);
+                    await updateProfile(r.user, { displayName: username });
+                    await setDoc(doc(db, "usernameMap", username.toLowerCase()), { uid: r.user.uid });
+                    await setDoc(doc(db, "usernames", r.user.uid), { name: username });
+                } catch(e) {
+                    if (e.code === 'auth/email-already-in-use') window.showLoginError('そのユーザー名はすでに使われています');
+                    else window.showLoginError('登録失敗: ' + e.message);
+                }
+            }
         };
 
         window.distributeMoney = async () => {
@@ -300,7 +377,22 @@
         .payout-item label { font-size: 9px; color: #aaa; display: block; margin-bottom: 3px; }
         .payout-item input { width: 100%; padding: 6px; background: #111; color: var(--gold); border: 1px solid #444; border-radius: 3px; font-size: 11px; font-weight: bold; text-align: center; font-family: 'Courier New', monospace; box-sizing: border-box; }
     
-        /* ===== レスポンシブ ===== */
+        /* ===== ログインモーダル ===== */
+        #login-modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.92); z-index:200; justify-content:center; align-items:center; }
+        .login-modal-box { background:#050505; border:2px solid var(--neon); border-radius:12px; padding:24px; width:300px; display:flex; flex-direction:column; gap:12px; box-shadow:0 0 30px rgba(0,255,255,0.2); }
+        .login-modal-box h2 { text-align:center; color:var(--neon); font-size:14px; letter-spacing:3px; margin:0; }
+        .login-tab-wrap { display:flex; gap:4px; }
+        .login-tab { flex:1; padding:8px; border:1px solid #444; border-radius:4px; cursor:pointer; font-weight:bold; font-size:12px; background:#111; color:#666; font-family:'Courier New',monospace; }
+        .login-tab.active { background:#000; border-color:var(--neon); color:var(--neon); box-shadow:0 0 8px rgba(0,255,255,0.3); }
+        .login-field { background:#000; color:#fff; border:1px solid #444; padding:10px; border-radius:4px; font-size:13px; width:100%; box-sizing:border-box; font-family:'Courier New',monospace; }
+        .login-field:focus { outline:none; border-color:var(--neon); box-shadow:0 0 6px rgba(0,255,255,0.2); }
+        .login-field::placeholder { color:#444; }
+        #login-error { color:var(--red); font-size:11px; text-align:center; min-height:14px; }
+        .login-submit-btn { padding:12px; border:none; border-radius:4px; font-size:13px; font-weight:bold; cursor:pointer; background:var(--neon); color:#000; font-family:'Courier New',monospace; letter-spacing:1px; }
+        .login-divider { display:flex; align-items:center; gap:8px; color:#333; font-size:11px; }
+        .login-divider::before,.login-divider::after { content:''; flex:1; height:1px; background:#333; }
+        .login-close-btn { background:none; border:1px solid #333; color:#666; padding:8px; border-radius:4px; cursor:pointer; font-family:'Courier New',monospace; font-size:11px; }
+    
         @media (max-width: 900px) {
             body { padding: 6px; }
             #layout { flex-direction: column; align-items: center; gap: 8px; }
@@ -320,6 +412,26 @@
 <body>
 
 <div id="login-area"></div>
+
+<!-- ユーザー名+パスワード ログインモーダル -->
+<div id="login-modal">
+    <div class="login-modal-box">
+        <h2>💀 TITANS ULTIMATE</h2>
+        <div class="login-tab-wrap">
+            <button class="login-tab active" id="tab-login" onclick="window.switchLoginTab('login')">ログイン</button>
+            <button class="login-tab" id="tab-register" onclick="window.switchLoginTab('register')">新規登録</button>
+        </div>
+        <input type="text" id="login-username" class="login-field" placeholder="ユーザー名" maxlength="20" autocomplete="username">
+        <input type="password" id="login-password" class="login-field" placeholder="パスワード（6文字以上）" autocomplete="current-password">
+        <div id="login-error"></div>
+        <button class="login-submit-btn" id="login-submit-btn" onclick="window.submitLogin && window.submitLogin()">ログイン</button>
+        <div class="login-divider">または</div>
+        <button class="cyber-btn-s" onclick="window.login && window.login()" style="padding:10px; border-color:#fff; display:flex; align-items:center; justify-content:center; gap:8px;">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" width="16" alt="G"> Googleでログイン
+        </button>
+        <button class="login-close-btn" onclick="window.closeLoginModal && window.closeLoginModal()">[ 閉じる ]</button>
+    </div>
+</div>
 <div id="admin-overlay">
     <div class="panel admin-panel-inner" style="border-color:var(--pink); width: 360px;">
         <div class="title" style="color:var(--pink);">ADMIN CONSOLE</div>
@@ -1158,6 +1270,23 @@
     renderer.render(scene, camera);
 }
     init(); animate(); loadData();
+
+    // ログインフォームのEnterキー対応
+    document.addEventListener('DOMContentLoaded', () => {
+        ['login-username', 'login-password'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('keydown', e => {
+                if (e.key === 'Enter') window.submitLogin && window.submitLogin();
+            });
+        });
+    });
+    // DOMContentLoadedが既に発火済みの場合も対応
+    ['login-username', 'login-password'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('keydown', e => {
+            if (e.key === 'Enter') window.submitLogin && window.submitLogin();
+        });
+    });
 </script>
 </body>
 </html>
